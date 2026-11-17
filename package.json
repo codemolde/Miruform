@@ -4,7 +4,7 @@
   "description": "Local art practice reference app with spaced repetition",
   "main": "electron-main.js",
   "author": "Daksh Beniwal",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "scripts": {
     "start": "node server.js",
     "test": "node --test --test-concurrency=1 tests/*.test.js",

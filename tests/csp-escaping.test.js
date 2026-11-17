@@ -284,16 +284,20 @@ test('a backup with a javascript: sketchUrl is rejected (MOCKED)', async () => {
 // ==================== TEST 4: SERVER CSP HEADER & SERVER SYNC VALIDATION ====================
 test('Server HTML response sends correct CSP header, and POST /api/sync rejects javascript: sketchUrl', async (t) => {
   const { fork } = require('node:child_process');
+  const os = require('node:os');
   const serverPath = path.join(__dirname, '../server.js');
 
+  const tempUserDir = fs.mkdtempSync(path.join(os.tmpdir(), 'csp-test-user-'));
   const testPort = 50992;
   const child = fork(serverPath, [], {
-    env: { ...process.env, PORT: String(testPort) },
+    env: { ...process.env, PORT: String(testPort), USER_DATA_DIR: tempUserDir },
     silent: true
   });
 
-  t.after(() => {
+  t.after(async () => {
     child.kill('SIGTERM');
+    await new Promise(r => child.once('exit', r));
+    try { fs.rmSync(tempUserDir, { recursive: true, force: true }); } catch (e) {}
   });
 
   // Wait for server to bind
@@ -379,16 +383,20 @@ test('index.html contains no inline <script> tags or inline event handlers', () 
 // ==================== TEST 6: LEGACY SKETCHURL SURVIVES SYNC ====================
 test('a legacy sketchUrl survives sync (AUTOMATED-RAN)', async (t) => {
   const { fork } = require('node:child_process');
+  const os = require('node:os');
   const serverPath = path.join(__dirname, '../server.js');
 
+  const tempUserDir = fs.mkdtempSync(path.join(os.tmpdir(), 'csp-test-user-legacy-'));
   const testPort = 50995;
   const child = fork(serverPath, [], {
-    env: { ...process.env, PORT: String(testPort) },
+    env: { ...process.env, PORT: String(testPort), USER_DATA_DIR: tempUserDir },
     silent: true
   });
 
-  t.after(() => {
+  t.after(async () => {
     child.kill('SIGTERM');
+    await new Promise(r => child.once('exit', r));
+    try { fs.rmSync(tempUserDir, { recursive: true, force: true }); } catch (e) {}
   });
 
   // Wait for server to bind

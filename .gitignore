@@ -13,10 +13,17 @@ npm-debug.log*
 dist/
 build/
 out/
+release/
 *.dmg
 *.zip
 *.tar.gz
 *.blockmap
+
+# Private extensions & Pro modules
+/pro/
+pro/
+/extensions/
+extensions/
 
 # Runtime and local user data
 userdata/

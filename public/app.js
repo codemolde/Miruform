@@ -175,7 +175,7 @@ const Storage = {
           if (typeof DeckManager !== 'undefined' && DeckManager.init) DeckManager.init();
           if (typeof CardManager !== 'undefined' && CardManager.init) CardManager.init();
           if (typeof ReviewHistory !== 'undefined' && ReviewHistory.init) ReviewHistory.init();
-        }).catch(() => {});
+        }).catch(() => { });
       });
       // Do NOT fall back to localStorage for writing!
     }
@@ -470,7 +470,7 @@ const Storage = {
       chip.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#ef4444;color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;gap:8px;cursor:pointer;';
       chip.title = 'Disk synchronization failed. Click to retry syncing immediately.';
       chip.addEventListener('click', () => {
-        this.syncToDisk(true).catch(() => {});
+        this.syncToDisk(true).catch(() => { });
       });
       document.body.appendChild(chip);
     }
@@ -1187,6 +1187,12 @@ const DeckManager = {
 
   getAll() {
     return this.decks;
+  },
+
+  getActiveDeck() {
+    const currentId = (typeof UI !== 'undefined' && UI.currentDeckId) ? UI.currentDeckId : ((typeof BoardManager !== 'undefined' && BoardManager.activeDeckId) ? BoardManager.activeDeckId : null);
+    if (!currentId) return null;
+    return this.getById(currentId) || null;
   }
 };
 
@@ -2139,6 +2145,539 @@ const SessionManager = {
     return a;
   }
 };
+
+// ==================== BOARD MANAGER (REFERENCE BOARD & GALLERY) ====================
+const BoardManager = {
+  activeDeckId: null,
+  allReferences: [],
+  filteredReferences: [],
+  searchQuery: '',
+  selectedTag: null,
+  selectedRef: null,
+  currentIndex: -1,
+  isStageOpen: false,
+  slideshowIntervalSec: 0,
+  slideshowTimerId: null,
+  slideshowPaused: false,
+  gridScrollTop: 0,
+  gridSize: 'medium',
+
+  init(deckId, images) {
+    this.activeDeckId = deckId;
+    this.allReferences = Array.isArray(images) ? images : [];
+    this.filteredReferences = [...this.allReferences];
+    this.searchQuery = '';
+    this.selectedTag = null;
+    this.selectedRef = null;
+    this.currentIndex = -1;
+    this.isStageOpen = false;
+    this.slideshowIntervalSec = 0;
+    this.slideshowPaused = false;
+    this.gridScrollTop = 0;
+    this.stopSlideshow();
+  },
+
+  selectReference(ref) {
+    this.selectedRef = ref;
+    const list = (this.filteredReferences && this.filteredReferences.length > 0)
+      ? this.filteredReferences
+      : (this.allReferences || []);
+    if (ref && list.length > 0) {
+      const idx = list.findIndex(r => r.id === ref.id || (r.path && r.path === ref.path));
+      this.currentIndex = idx >= 0 ? idx : 0;
+    } else {
+      this.currentIndex = -1;
+    }
+    return this.selectedRef;
+  },
+
+  openStage(ref) {
+    if (ref) this.selectReference(ref);
+    this.isStageOpen = true;
+    if (this.slideshowIntervalSec > 0) {
+      this.startSlideshowTimer();
+    }
+    return this.selectedRef;
+  },
+
+  closeStage() {
+    this.isStageOpen = false;
+    this.stopSlideshow();
+  },
+
+  prevReference() {
+    const list = (this.filteredReferences && this.filteredReferences.length > 0)
+      ? this.filteredReferences
+      : (this.allReferences || []);
+    if (!list || list.length === 0) return null;
+    const total = list.length;
+    let nextIdx = (this.currentIndex >= 0 ? this.currentIndex : 0) - 1;
+    if (nextIdx < 0) nextIdx = total - 1;
+    const nextRef = list[nextIdx];
+    this.selectReference(nextRef);
+    if (this.slideshowIntervalSec > 0 && !this.slideshowPaused) {
+      this.startSlideshowTimer();
+    }
+    return nextRef;
+  },
+
+  nextReference() {
+    const list = (this.filteredReferences && this.filteredReferences.length > 0)
+      ? this.filteredReferences
+      : (this.allReferences || []);
+    if (!list || list.length === 0) return null;
+    const total = list.length;
+    let nextIdx = ((this.currentIndex >= 0 ? this.currentIndex : 0) + 1) % total;
+    const nextRef = list[nextIdx];
+    this.selectReference(nextRef);
+    if (this.slideshowIntervalSec > 0 && !this.slideshowPaused) {
+      this.startSlideshowTimer();
+    }
+    return nextRef;
+  },
+
+  setSlideshowInterval(sec) {
+    const s = Math.max(0, parseInt(sec, 10) || 0);
+    this.slideshowIntervalSec = s;
+    this.stopSlideshowTimer();
+    this.slideshowPaused = false;
+    if (s > 0 && this.isStageOpen) {
+      this.startSlideshowTimer();
+    }
+  },
+
+  startSlideshowTimer() {
+    this.stopSlideshowTimer();
+    if (this.slideshowIntervalSec <= 0 || !this.isStageOpen) return;
+    this.slideshowTimerId = setInterval(() => {
+      if (this.slideshowPaused || !this.isStageOpen) return;
+      if (typeof UI !== 'undefined' && UI.stepBoardReference) {
+        UI.stepBoardReference('next');
+      } else {
+        this.nextReference();
+      }
+    }, this.slideshowIntervalSec * 1000);
+  },
+
+  stopSlideshowTimer() {
+    if (this.slideshowTimerId) {
+      clearInterval(this.slideshowTimerId);
+      this.slideshowTimerId = null;
+    }
+  },
+
+  pauseSlideshow() {
+    this.slideshowPaused = true;
+  },
+
+  resumeSlideshow() {
+    this.slideshowPaused = false;
+  },
+
+  toggleSlideshowPause() {
+    this.slideshowPaused = !this.slideshowPaused;
+    return this.slideshowPaused;
+  },
+
+  stopSlideshow() {
+    this.stopSlideshowTimer();
+    this.slideshowPaused = false;
+    this.slideshowIntervalSec = 0;
+  },
+
+  setGridSize(size) {
+    if (['small', 'medium', 'large'].includes(size)) {
+      this.gridSize = size;
+    }
+    return this.gridSize;
+  },
+
+  reset() {
+    this.activeDeckId = null;
+    this.allReferences = [];
+    this.filteredReferences = [];
+    this.searchQuery = '';
+    this.selectedTag = null;
+    this.selectedRef = null;
+    this.currentIndex = -1;
+    this.isStageOpen = false;
+    this.gridScrollTop = 0;
+    this.stopSlideshow();
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.BoardManager = BoardManager;
+}
+
+// ==================== MEMORY DRILL (FLASH & RECALL STATE MACHINE) ====================
+const FlashRecallManager = {
+  enabled: false,
+  observeSec: 15,
+  drawSec: 120, // 0 = No Limit
+  veilMode: 'blackout', // 'blackout' | 'blur'
+  phase: 'idle', // 'idle' | 'observe' | 'draw' | 'reveal'
+  phaseRemaining: 0,
+  intervalId: null,
+  currentCard: null,
+  drillStartTime: null,
+
+  init() {
+    try {
+      this.enabled = localStorage.getItem('artpractice_drill_enabled') === 'true';
+      const obs = parseInt(localStorage.getItem('artpractice_drill_observe'), 10);
+      if ([10, 15, 20, 30].includes(obs)) this.observeSec = obs;
+      const drw = parseInt(localStorage.getItem('artpractice_drill_draw'), 10);
+      if ([0, 60, 120, 180, 300].includes(drw)) this.drawSec = drw;
+      const veil = localStorage.getItem('artpractice_drill_veil');
+      if (['blackout', 'blur'].includes(veil)) this.veilMode = veil;
+    } catch (e) { }
+  },
+
+  setEnabled(val) {
+    this.enabled = Boolean(val);
+    try { localStorage.setItem('artpractice_drill_enabled', String(this.enabled)); } catch (e) { }
+    return this.enabled;
+  },
+
+  setObserveSec(sec) {
+    const s = parseInt(sec, 10);
+    if ([10, 15, 20, 30].includes(s)) {
+      this.observeSec = s;
+      try { localStorage.setItem('artpractice_drill_observe', String(s)); } catch (e) { }
+    }
+    return this.observeSec;
+  },
+
+  setDrawSec(sec) {
+    const s = parseInt(sec, 10);
+    if ([0, 60, 120, 180, 300].includes(s)) {
+      this.drawSec = s;
+      try { localStorage.setItem('artpractice_drill_draw', String(s)); } catch (e) { }
+    }
+    return this.drawSec;
+  },
+
+  setVeilMode(mode) {
+    if (['blackout', 'blur'].includes(mode)) {
+      this.veilMode = mode;
+      try { localStorage.setItem('artpractice_drill_veil', mode); } catch (e) { }
+    }
+    return this.veilMode;
+  },
+
+  getElapsedDrillDuration() {
+    if (!this.drillStartTime) return this.observeSec + (this.drawSec || 0);
+    return Math.max(1, Math.round((Date.now() - this.drillStartTime) / 1000));
+  },
+
+  getMasteryChallenge(card) {
+    if (!card || (card.easeFactor !== undefined && card.easeFactor <= 2.4) || (card.interval || 0) <= 7) {
+      return null;
+    }
+    const challenges = [
+      'Mastery Challenge: Rotate camera +45° horizontally',
+      'Mastery Challenge: Flip key light to opposite top-right',
+      'Mastery Challenge: Draw from lower 3/4 perspective',
+      'Mastery Challenge: Exaggerate dynamic perspective tilt +15°',
+      'Mastery Challenge: Invert primary light source from below (uplighting)',
+      'Mastery Challenge: Shift to bird\'s-eye view (high vantage point)'
+    ];
+    const key = String(card.imageId || card.imageName || card.id || 'mastery');
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+      hash = ((hash << 5) - hash) + key.charCodeAt(i);
+      hash |= 0;
+    }
+    return challenges[Math.abs(hash) % challenges.length];
+  },
+
+  // Starts card lifecycle when a study card loads
+  startCard(deckId, image) {
+    this.resetTimer();
+    if (!this.enabled || !image) {
+      this.hideHUD();
+      return false;
+    }
+
+    // Board sessions must NEVER activate Flash & Recall
+    if (typeof UI !== 'undefined' && (UI.sessionSource === 'board' || UI.isBoardStageOpen)) {
+      this.reset();
+      return false;
+    }
+
+    this.drillStartTime = Date.now();
+    const card = (typeof CardManager !== 'undefined' && deckId)
+      ? CardManager.getCard(deckId, image.id)
+      : null;
+    this.currentCard = card;
+
+    this.transitionToObserve();
+    return true;
+  },
+
+  transitionToObserve() {
+    this.resetTimer();
+    this.phase = 'observe';
+    this.phaseRemaining = this.observeSec;
+
+    // Veil must remain hidden in Phase 1
+    if (typeof UI !== 'undefined' && UI.clearBlurOverlay) {
+      UI.clearBlurOverlay(true);
+    }
+    const overlay = document.getElementById('image-blur-overlay');
+    if (overlay) {
+      overlay.classList.add('hidden');
+      overlay.classList.remove('drill-blind-active', 'drill-veil-blackout', 'drill-veil-blur');
+    }
+    const recallCard = document.getElementById('drill-recall-card');
+    if (recallCard) recallCard.classList.add('hidden');
+
+    const critiqueActions = document.getElementById('drill-critique-actions');
+    if (critiqueActions) critiqueActions.classList.add('hidden');
+
+    // Rating area locked/dimmed during OBSERVE
+    const ratingArea = document.getElementById('session-rating-area');
+    if (ratingArea) ratingArea.classList.add('drill-rating-locked');
+
+    // Rating dock collapsed during OBSERVE
+    if (typeof UI !== 'undefined' && UI.toggleRatingDock) {
+      UI.toggleRatingDock(false);
+      document.body.classList.remove('rating-required');
+    }
+
+    this.updateHUD();
+    this.showHUD();
+
+    // Single-interval countdown
+    this.intervalId = setInterval(() => {
+      this.phaseRemaining--;
+      if (this.phaseRemaining <= 3 && this.phaseRemaining > 0) {
+        if (typeof SoundFX !== 'undefined' && SoundFX.timerTick) {
+          SoundFX.timerTick();
+        }
+      }
+      this.updateHUD();
+
+      if (this.phaseRemaining <= 0) {
+        this.resetTimer();
+        if (typeof SoundFX !== 'undefined' && SoundFX.timerAlert) {
+          SoundFX.timerAlert();
+        }
+        this.transitionToDraw();
+      }
+    }, 1000);
+  },
+
+  transitionToDraw() {
+    this.resetTimer();
+    this.phase = 'draw';
+    this.phaseRemaining = this.drawSec; // 0 = No Limit
+
+    // Engage veil overlay
+    const overlay = document.getElementById('image-blur-overlay');
+    if (overlay) {
+      overlay.classList.remove('hidden');
+      overlay.classList.add('drill-blind-active');
+      if (this.veilMode === 'blur') {
+        overlay.classList.add('drill-veil-blur');
+        overlay.classList.remove('drill-veil-blackout');
+      } else {
+        overlay.classList.add('drill-veil-blackout');
+        overlay.classList.remove('drill-veil-blur');
+      }
+    }
+    if (typeof UI !== 'undefined') {
+      UI.imageBlurred = true;
+      if (UI.toggleRatingDock) UI.toggleRatingDock(false);
+      document.body.classList.remove('rating-required');
+    }
+
+    const critiqueActions = document.getElementById('drill-critique-actions');
+    if (critiqueActions) critiqueActions.classList.add('hidden');
+
+    // Rating area remains locked/dimmed during BLIND_DRAW
+    const ratingArea = document.getElementById('session-rating-area');
+    if (ratingArea) ratingArea.classList.add('drill-rating-locked');
+
+    // Render recall prompt card inside veil
+    const recallCard = document.getElementById('drill-recall-card');
+    const masteryContainer = document.getElementById('drill-mastery-container');
+    if (recallCard) {
+      recallCard.classList.remove('hidden');
+      if (masteryContainer) {
+        const challenge = this.getMasteryChallenge(this.currentCard);
+        if (challenge) {
+          const escChallenge = (typeof UI !== 'undefined' && UI._esc) ? UI._esc(challenge) : challenge;
+          masteryContainer.innerHTML = `
+            <div class="drill-mastery-badge">
+              <span class="mastery-sparkle" aria-hidden="true">⚡</span>
+              <span>${escChallenge}</span>
+            </div>
+          `;
+          masteryContainer.classList.remove('hidden');
+        } else {
+          masteryContainer.innerHTML = '';
+          masteryContainer.classList.add('hidden');
+        }
+      }
+    }
+
+    this.updateHUD();
+    this.showHUD();
+
+    // Timer handling for Draw Phase
+    if (this.drawSec > 0) {
+      this.intervalId = setInterval(() => {
+        this.phaseRemaining--;
+        if (this.phaseRemaining <= 3 && this.phaseRemaining > 0) {
+          if (typeof SoundFX !== 'undefined' && SoundFX.timerTick) {
+            SoundFX.timerTick();
+          }
+        }
+        this.updateHUD();
+
+        if (this.phaseRemaining <= 0) {
+          this.resetTimer();
+          this.transitionToReveal();
+        }
+      }, 1000);
+    }
+  },
+
+  transitionToReveal() {
+    this.resetTimer();
+    this.phase = 'reveal';
+    this.phaseRemaining = 0;
+
+    // Lift veil
+    const overlay = document.getElementById('image-blur-overlay');
+    if (overlay) {
+      overlay.classList.add('hidden');
+      overlay.classList.remove('drill-blind-active', 'drill-veil-blackout', 'drill-veil-blur');
+    }
+    const recallCard = document.getElementById('drill-recall-card');
+    if (recallCard) recallCard.classList.add('hidden');
+
+    // Unlock rating area for critique and grade
+    const ratingArea = document.getElementById('session-rating-area');
+    if (ratingArea) ratingArea.classList.remove('drill-rating-locked');
+
+    // Show self-critique quick actions
+    const critiqueActions = document.getElementById('drill-critique-actions');
+    if (critiqueActions) critiqueActions.classList.remove('hidden');
+
+    if (typeof UI !== 'undefined') {
+      UI.imageBlurred = false;
+      // Open ratings for critique
+      if (UI.toggleRatingDock) UI.toggleRatingDock(true);
+      document.body.classList.add('rating-required');
+      if (UI.wakeHud) UI.wakeHud();
+    }
+
+    // Soft audio cue on reveal
+    if (typeof SoundFX !== 'undefined') {
+      if (typeof SoundFX.rate === 'function') {
+        SoundFX.rate('medium');
+      } else if (typeof SoundFX.click === 'function') {
+        SoundFX.click();
+      }
+    }
+
+    this.updateHUD();
+    this.showHUD();
+  },
+
+  updateHUD() {
+    const textEl = document.getElementById('drill-hud-phase-text');
+    const actionBtn = document.getElementById('btn-drill-action');
+    const critiqueActions = document.getElementById('drill-critique-actions');
+    if (!textEl) return;
+
+    if (this.phase === 'observe') {
+      const mins = Math.floor(Math.max(0, this.phaseRemaining) / 60);
+      const secs = Math.max(0, this.phaseRemaining) % 60;
+      const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+      textEl.textContent = `OBSERVE · ${timeStr}`;
+      if (actionBtn) {
+        actionBtn.textContent = 'Draw Now →';
+        actionBtn.classList.remove('hidden');
+      }
+      if (critiqueActions) critiqueActions.classList.add('hidden');
+    } else if (this.phase === 'draw') {
+      if (this.drawSec > 0) {
+        const mins = Math.floor(Math.max(0, this.phaseRemaining) / 60);
+        const secs = Math.max(0, this.phaseRemaining) % 60;
+        const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+        textEl.textContent = `BLIND DRAW · ${timeStr}`;
+      } else {
+        textEl.textContent = 'BLIND DRAW · Untimed';
+      }
+      if (actionBtn) {
+        actionBtn.textContent = 'Reveal & Critique →';
+        actionBtn.classList.remove('hidden');
+      }
+      if (critiqueActions) critiqueActions.classList.add('hidden');
+    } else if (this.phase === 'reveal') {
+      textEl.textContent = 'CRITIQUE & GRADE';
+      if (actionBtn) {
+        actionBtn.classList.add('hidden');
+      }
+      if (critiqueActions) {
+        critiqueActions.classList.remove('hidden');
+      }
+    } else {
+      textEl.textContent = '';
+      if (actionBtn) actionBtn.classList.add('hidden');
+      if (critiqueActions) critiqueActions.classList.add('hidden');
+    }
+  },
+
+  showHUD() {
+    const hud = document.getElementById('drill-stage-hud');
+    if (hud) hud.classList.remove('hidden');
+    const timerDisp = document.getElementById('timer-display');
+    if (timerDisp) timerDisp.classList.add('hidden');
+  },
+
+  hideHUD() {
+    const hud = document.getElementById('drill-stage-hud');
+    if (hud) hud.classList.add('hidden');
+  },
+
+  resetTimer() {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+  },
+
+  reset() {
+    this.resetTimer();
+    this.phase = 'idle';
+    this.phaseRemaining = 0;
+    this.currentCard = null;
+    this.drillStartTime = null;
+    this.hideHUD();
+    const overlay = document.getElementById('image-blur-overlay');
+    if (overlay) {
+      overlay.classList.remove('drill-blind-active', 'drill-veil-blackout', 'drill-veil-blur');
+    }
+    const recallCard = document.getElementById('drill-recall-card');
+    if (recallCard) recallCard.classList.add('hidden');
+    const critiqueActions = document.getElementById('drill-critique-actions');
+    if (critiqueActions) critiqueActions.classList.add('hidden');
+    const ratingArea = document.getElementById('session-rating-area');
+    if (ratingArea) ratingArea.classList.remove('drill-rating-locked');
+  }
+};
+
+const MemoryDrillManager = FlashRecallManager;
+
+if (typeof window !== 'undefined') {
+  window.MemoryDrillManager = MemoryDrillManager;
+  window.FlashRecallManager = FlashRecallManager;
+}
 
 // ==================== ARTIST TOOLBOX ====================
 const ArtistToolbox = {
@@ -4312,9 +4851,9 @@ const SmartCropManager = {
       CardManager.save();
       if (typeof Storage !== 'undefined') {
         if (typeof Storage.syncToServer === 'function') {
-          Storage.syncToServer(false).catch(() => {});
+          Storage.syncToServer(false).catch(() => { });
         } else if (typeof Storage.syncToDisk === 'function') {
-          Storage.syncToDisk(false).catch(() => {});
+          Storage.syncToDisk(false).catch(() => { });
         }
       }
 
@@ -4497,9 +5036,9 @@ const SmartCropManager = {
     // 7. Sync state
     if (typeof Storage !== 'undefined') {
       if (typeof Storage.syncToServer === 'function') {
-        Storage.syncToServer(false).catch(() => {});
+        Storage.syncToServer(false).catch(() => { });
       } else if (typeof Storage.syncToDisk === 'function') {
-        Storage.syncToDisk(false).catch(() => {});
+        Storage.syncToDisk(false).catch(() => { });
       }
     }
 
@@ -4857,6 +5396,158 @@ const PlumbTool = {
   }
 };
 
+// ==================== SHARED FILTERED CANVAS RENDERER ====================
+/**
+ * Pure, reusable helper function to draw an image with active crops, transforms,
+ * and optical filters onto a 2D canvas context.
+ * Used by PiPCanvasStreamer.
+ *
+ * @param {CanvasRenderingContext2D} ctx - Target 2D rendering context
+ * @param {HTMLImageElement|HTMLCanvasElement|Object} sourceImage - Image source
+ * @param {Object} [transformAndFilterState={}] - Active filters and transform state
+ * @param {Object} [targetRect=null] - Destination rectangle { x, y, width, height }
+ */
+function renderFilteredCanvas(ctx, sourceImage, transformAndFilterState, targetRect) {
+  if (!ctx || !sourceImage) return;
+
+  const nw = sourceImage.naturalWidth || sourceImage.width || 0;
+  const nh = sourceImage.naturalHeight || sourceImage.height || 0;
+  if (!nw || !nh) return;
+
+  const rect = targetRect || {
+    x: 0,
+    y: 0,
+    width: ctx.canvas ? ctx.canvas.width : 300,
+    height: ctx.canvas ? ctx.canvas.height : 150
+  };
+  const stageX = rect.x !== undefined ? rect.x : (rect.stageX || 0);
+  const stageY = rect.y !== undefined ? rect.y : (rect.stageY || 0);
+  const stageW = rect.width !== undefined ? rect.width : (rect.stageW || 300);
+  const stageH = rect.height !== undefined ? rect.height : (rect.stageH || 150);
+
+  const state = transformAndFilterState || {};
+  const zoom = state.zoom !== undefined ? state.zoom : 1;
+  const panX = state.panX || 0;
+  const panY = state.panY || 0;
+  const flipX = state.flipX !== undefined ? state.flipX : 1;
+  const rotateDeg = state.rotateTotal !== undefined ? state.rotateTotal : (state.rotate || 0);
+  const rotateRad = (rotateDeg * Math.PI) / 180;
+  const isQuarter = (Math.abs(Math.round(rotateDeg / 90)) % 2) === 1;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(stageX, stageY, stageW, stageH);
+  ctx.clip();
+
+  if (state.backgroundColor !== null && state.backgroundColor !== undefined) {
+    ctx.fillStyle = state.backgroundColor || '#0f1420';
+    ctx.fillRect(stageX, stageY, stageW, stageH);
+  }
+
+  // Handle crop bounds if specified (Smart Crop normalized { x, y, w, h } or pixel coordinates)
+  const crop = state.cropBounds || state.crop;
+  let sx = 0, sy = 0, sw = nw, sh = nh;
+  if (crop) {
+    const rawX = crop.x !== undefined ? crop.x : 0;
+    const rawY = crop.y !== undefined ? crop.y : 0;
+    const rawW = crop.w !== undefined ? crop.w : (crop.width !== undefined ? crop.width : 1);
+    const rawH = crop.h !== undefined ? crop.h : (crop.height !== undefined ? crop.height : 1);
+    if (rawW <= 1 && rawH <= 1 && (rawX < 1 || rawY < 1)) {
+      // Normalized coordinates (0..1)
+      sx = rawX * nw;
+      sy = rawY * nh;
+      sw = Math.max(1, rawW * nw);
+      sh = Math.max(1, rawH * nh);
+    } else {
+      // Absolute pixel coordinates
+      sx = rawX;
+      sy = rawY;
+      sw = Math.max(1, rawW);
+      sh = Math.max(1, rawH);
+    }
+  }
+
+  const ew = isQuarter ? sh : sw;
+  const eh = isQuarter ? sw : sh;
+  const scale = (state.fitMode === 'cover'
+    ? Math.max(stageW / ew, stageH / eh)
+    : Math.min(stageW / ew, stageH / eh)) * zoom;
+
+  const cx = stageX + stageW / 2 + panX;
+  const cy = stageY + stageH / 2 + panY;
+
+  ctx.translate(cx, cy);
+  ctx.scale(flipX, 1);
+  ctx.rotate(rotateRad);
+
+  const drawW = sw * scale;
+  const drawH = sh * scale;
+
+  if (state.squint) {
+    try { ctx.filter = `blur(${state.squintRadius || 6}px)`; } catch (e) { }
+  } else {
+    try { ctx.filter = 'none'; } catch (e) { }
+  }
+
+  if (crop) {
+    ctx.drawImage(sourceImage, sx, sy, sw, sh, -drawW / 2, -drawH / 2, drawW, drawH);
+  } else {
+    ctx.drawImage(sourceImage, -drawW / 2, -drawH / 2, drawW, drawH);
+  }
+  try { ctx.filter = 'none'; } catch (e) { }
+
+  // Custom callback overlay inside transformed matrix
+  if (typeof state.onDrawTransformed === 'function') {
+    try {
+      state.onDrawTransformed(ctx, sw, sh, drawW, drawH);
+    } catch (e) { }
+  }
+
+  ctx.restore();
+
+  // Pixel filters: Grayscale, Invert, Notan, Silhouette, Posterize
+  if (state.grayscale || state.invert || state.notan || state.silhouette || state.posterize) {
+    try {
+      const imgData = ctx.getImageData(stageX, stageY, stageW, stageH);
+      if (imgData && imgData.data) {
+        const d = imgData.data;
+        const isNotan = Boolean(state.notan);
+        const isSil = Boolean(state.silhouette);
+        const isPost = Boolean(state.posterize);
+        const postSteps = Math.max(2, Math.min(6, state.posterizeSteps || 4));
+        const thresh = isSil ? ((state.silhouetteThreshold !== undefined ? state.silhouetteThreshold : 0.5) * 255) : 128;
+        const silInvert = Boolean(state.silhouetteInverted);
+        const isInvert = Boolean(state.invert);
+        const isGray = Boolean(state.grayscale);
+
+        for (let i = 0; i < d.length; i += 4) {
+          let r = d[i], g = d[i + 1], b = d[i + 2];
+          let lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+          if (isNotan || isSil) {
+            let v = lum > thresh ? 255 : 0;
+            if (silInvert) v = 255 - v;
+            d[i] = v; d[i + 1] = v; d[i + 2] = v;
+          } else if (isPost) {
+            const stepIdx = Math.round((lum / 255) * (postSteps - 1));
+            const v = Math.round((stepIdx / (postSteps - 1)) * 255);
+            d[i] = v; d[i + 1] = v; d[i + 2] = v;
+          } else if (isGray) {
+            d[i] = lum; d[i + 1] = lum; d[i + 2] = lum;
+          }
+
+          if (isInvert) {
+            d[i] = 255 - d[i];
+            d[i + 1] = 255 - d[i + 1];
+            d[i + 2] = 255 - d[i + 2];
+          }
+        }
+        ctx.putImageData(imgData, stageX, stageY);
+      }
+    } catch (e) { }
+  }
+}
+
 // ==================== NATIVE CANVAS PIP STREAMER (SAFARI / MACOS) ====================
 const PiPCanvasStreamer = {
   canvas: null,
@@ -4967,109 +5658,56 @@ const PiPCanvasStreamer = {
       const stageX = 8;
       const stageY = topMargin;
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(stageX, stageY, stageW, stageH);
-      ctx.clip();
-
-      ctx.fillStyle = '#0f1420';
-      ctx.fillRect(stageX, stageY, stageW, stageH);
-
-      const nw = img.naturalWidth;
-      const nh = img.naturalHeight;
-      const quarter = ArtistToolbox.rotate % 180 === 90;
-      const ew = quarter ? nh : nw;
-      const eh = quarter ? nw : nh;
-      const scale = Math.min(stageW / ew, stageH / eh) * ArtistToolbox.zoom;
-
-      const cx = stageX + stageW / 2 + ArtistToolbox.panX;
-      const cy = stageY + stageH / 2 + ArtistToolbox.panY;
-
-      ctx.translate(cx, cy);
-      ctx.scale(ArtistToolbox.flipX, 1);
-      ctx.rotate((ArtistToolbox.rotateTotal * Math.PI) / 180);
-
-      const drawW = nw * scale;
-      const drawH = nh * scale;
-      if (ArtistToolbox.squint) {
-        try { ctx.filter = `blur(${ArtistToolbox.squintRadius}px)`; } catch (e) { }
-      } else {
-        try { ctx.filter = 'none'; } catch (e) { }
-      }
-      ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
-      try { ctx.filter = 'none'; } catch (e) { }
-
-      // Render Sketch Overlay on canvas stream if active
-      if (typeof SketchOverlay !== 'undefined' && SketchOverlay.active && SketchOverlay.visible && SketchOverlay.imgEl && SketchOverlay.imgEl.complete && SketchOverlay.imgEl.naturalWidth > 0) {
-        ctx.save();
-        ctx.globalAlpha = SketchOverlay.opacity;
-        if (SketchOverlay.blendMode === 'difference') {
-          ctx.globalCompositeOperation = 'difference';
-        } else if (SketchOverlay.blendMode === 'multiply') {
-          ctx.globalCompositeOperation = 'multiply';
-        } else {
-          ctx.globalCompositeOperation = 'source-over';
-        }
-
-        // Apply independent Pan, Rotate, and Scale alignment
-        ctx.translate(SketchOverlay.sketchOffsetX || 0, SketchOverlay.sketchOffsetY || 0);
-        if (SketchOverlay.sketchRotate) {
-          ctx.rotate((SketchOverlay.sketchRotate * Math.PI) / 180);
-        }
-        if (SketchOverlay.sketchScale && SketchOverlay.sketchScale !== 1) {
-          ctx.scale(SketchOverlay.sketchScale, SketchOverlay.sketchScale);
-        }
-
-        ctx.drawImage(SketchOverlay.imgEl, -drawW / 2, -drawH / 2, drawW, drawH);
-        ctx.restore();
-      }
-
-      // Render Plumb-Line & Angle Measurement Overlay on canvas stream if active
-      if (typeof PlumbTool !== 'undefined' && (PlumbTool.lines.length > 0 || PlumbTool.currentLine)) {
-        PlumbTool.renderToCanvas(ctx, nw, nh, drawW, drawH);
-      }
-
-      ctx.restore();
-
-      // Apply pixel filter if needed (grayscale, invert, notan, silhouette, posterize)
-      if (ArtistToolbox.grayscale || ArtistToolbox.invert || ArtistToolbox.notan || ArtistToolbox.silhouette || ArtistToolbox.posterize) {
-        try {
-          const imgData = ctx.getImageData(stageX, stageY, stageW, stageH);
-          const d = imgData.data;
-          const isNotan = ArtistToolbox.notan;
-          const isSil = ArtistToolbox.silhouette;
-          const isPost = ArtistToolbox.posterize;
-          const postSteps = Math.max(2, Math.min(6, ArtistToolbox.posterizeSteps || 4));
-          const thresh = isSil ? (ArtistToolbox.silhouetteThreshold * 255) : 128;
-          const silInvert = ArtistToolbox.silhouetteInverted;
-          const isInvert = ArtistToolbox.invert;
-          const isGray = ArtistToolbox.grayscale;
-
-          for (let i = 0; i < d.length; i += 4) {
-            let r = d[i], g = d[i + 1], b = d[i + 2];
-            let lum = 0.299 * r + 0.587 * g + 0.114 * b;
-
-            if (isNotan || isSil) {
-              let v = lum > thresh ? 255 : 0;
-              if (silInvert) v = 255 - v;
-              d[i] = v; d[i + 1] = v; d[i + 2] = v;
-            } else if (isPost) {
-              const stepIdx = Math.round((lum / 255) * (postSteps - 1));
-              const v = Math.round((stepIdx / (postSteps - 1)) * 255);
-              d[i] = v; d[i + 1] = v; d[i + 2] = v;
-            } else if (isGray) {
-              d[i] = lum; d[i + 1] = lum; d[i + 2] = lum;
+      renderFilteredCanvas(ctx, img, {
+        zoom: ArtistToolbox.zoom,
+        panX: ArtistToolbox.panX,
+        panY: ArtistToolbox.panY,
+        flipX: ArtistToolbox.flipX,
+        rotate: ArtistToolbox.rotate,
+        rotateTotal: ArtistToolbox.rotateTotal,
+        squint: ArtistToolbox.squint,
+        squintRadius: ArtistToolbox.squintRadius,
+        grayscale: ArtistToolbox.grayscale,
+        notan: ArtistToolbox.notan,
+        silhouette: ArtistToolbox.silhouette,
+        silhouetteThreshold: ArtistToolbox.silhouetteThreshold,
+        silhouetteInverted: ArtistToolbox.silhouetteInverted,
+        posterize: ArtistToolbox.posterize,
+        posterizeSteps: ArtistToolbox.posterizeSteps,
+        invert: ArtistToolbox.invert,
+        backgroundColor: '#0f1420',
+        onDrawTransformed: (tCtx, nw, nh, drawW, drawH) => {
+          // Render Sketch Overlay on canvas stream if active
+          if (typeof SketchOverlay !== 'undefined' && SketchOverlay.active && SketchOverlay.visible && SketchOverlay.imgEl && SketchOverlay.imgEl.complete && SketchOverlay.imgEl.naturalWidth > 0) {
+            tCtx.save();
+            tCtx.globalAlpha = SketchOverlay.opacity;
+            if (SketchOverlay.blendMode === 'difference') {
+              tCtx.globalCompositeOperation = 'difference';
+            } else if (SketchOverlay.blendMode === 'multiply') {
+              tCtx.globalCompositeOperation = 'multiply';
+            } else {
+              tCtx.globalCompositeOperation = 'source-over';
             }
 
-            if (isInvert) {
-              d[i] = 255 - d[i];
-              d[i + 1] = 255 - d[i + 1];
-              d[i + 2] = 255 - d[i + 2];
+            // Apply independent Pan, Rotate, and Scale alignment
+            tCtx.translate(SketchOverlay.sketchOffsetX || 0, SketchOverlay.sketchOffsetY || 0);
+            if (SketchOverlay.sketchRotate) {
+              tCtx.rotate((SketchOverlay.sketchRotate * Math.PI) / 180);
             }
+            if (SketchOverlay.sketchScale && SketchOverlay.sketchScale !== 1) {
+              tCtx.scale(SketchOverlay.sketchScale, SketchOverlay.sketchScale);
+            }
+
+            tCtx.drawImage(SketchOverlay.imgEl, -drawW / 2, -drawH / 2, drawW, drawH);
+            tCtx.restore();
           }
-          ctx.putImageData(imgData, stageX, stageY);
-        } catch (e) { }
-      }
+
+          // Render Plumb-Line & Angle Measurement Overlay on canvas stream if active
+          if (typeof PlumbTool !== 'undefined' && (PlumbTool.lines.length > 0 || PlumbTool.currentLine)) {
+            PlumbTool.renderToCanvas(tCtx, nw, nh, drawW, drawH);
+          }
+        }
+      }, { x: stageX, y: stageY, width: stageW, height: stageH });
 
       // Apply CIELAB L* Value Map overlay to canvas streamer if active
       if (typeof ColorPaletteManager !== 'undefined' && ColorPaletteManager.valueMapOverlayActive) {
@@ -5200,6 +5838,396 @@ const PiPCanvasStreamer = {
   }
 };
 
+// ==================== EXTENSION HOST SUBSYSTEM ====================
+const ExtensionHost = {
+  toolbarActions: new Map(),
+  panels: new Map(),
+  stageModes: new Map(),
+  shortcuts: [],
+  activeStageModeId: null,
+
+  async loadClientExtensions() {
+    if (typeof fetch !== 'function') return;
+    try {
+      const res = await fetch('/api/extensions');
+      if (!res.ok) return;
+      const extensions = await res.json();
+      if (!Array.isArray(extensions)) return;
+
+      for (const ext of extensions) {
+        if (!ext || !ext.hasClient || !ext.id || typeof ext.id !== 'string') continue;
+        if (!/^[a-z0-9-]+$/.test(ext.id)) continue;
+
+        try {
+          const script = document.createElement('script');
+          script.src = `/api/ext/${encodeURIComponent(ext.id)}/client.js`;
+          script.defer = true;
+          script.dataset.extensionId = ext.id;
+          script.addEventListener('error', (e) => {
+            console.warn(`[Extensions] Failed to load client script for '${ext.id}':`, e);
+          });
+          const targetHead = document.head || (document.getElementsByTagName ? document.getElementsByTagName('head')[0] : null) || document.body;
+          if (targetHead && typeof targetHead.appendChild === 'function') {
+            targetHead.appendChild(script);
+          }
+        } catch (scriptErr) {
+          console.warn(`[Extensions] Error attaching script for '${ext.id}':`, scriptErr);
+        }
+      }
+    } catch (err) {
+      console.warn('[Extensions] Error fetching /api/extensions:', err);
+    }
+  },
+
+  registerFeature(initFn) {
+    if (typeof initFn !== 'function') {
+      console.warn('[Extensions] registerFeature argument must be a function');
+      return;
+    }
+    try {
+      const api = this.createScopedApi();
+      initFn(api);
+    } catch (err) {
+      console.warn('[Extensions] Error executing extension initFn:', err);
+    }
+  },
+
+  createScopedApi() {
+    return {
+      registerToolbarAction: (action) => this.registerToolbarAction(action),
+      registerPanel: (panel) => this.registerPanel(panel),
+      registerStageMode: (mode) => this.registerStageMode(mode),
+      registerShortcut: (shortcut) => this.registerShortcut(shortcut),
+      esc: (str) => (typeof UI !== 'undefined' && UI._esc ? UI._esc(str) : _escapeHtml(str)),
+      getActiveDeck: () => (typeof DeckManager !== 'undefined' && DeckManager.getActiveDeck ? DeckManager.getActiveDeck() : null)
+    };
+  },
+
+  registerToolbarAction(action) {
+    if (!action || typeof action !== 'object') {
+      console.warn('[Extensions] registerToolbarAction: invalid action configuration');
+      return;
+    }
+    const { id, label, iconSvg, shortcutHint, onClick } = action;
+    if (!id || typeof id !== 'string') {
+      console.warn('[Extensions] registerToolbarAction: missing action id');
+      return;
+    }
+    this.toolbarActions.set(id, {
+      id,
+      label: label || id,
+      iconSvg: iconSvg || '',
+      shortcutHint: shortcutHint || '',
+      onClick: typeof onClick === 'function' ? onClick : null
+    });
+
+    this.renderToolbarAction(this.toolbarActions.get(id));
+  },
+
+  ensureToolbarSlot() {
+    if (typeof document === 'undefined') return null;
+    let slot = document.querySelector('.ext-toolbar-slot');
+    if (slot) return slot;
+
+    const toolsContainer = document.getElementById('dock-tools-container');
+    if (!toolsContainer) return null;
+
+    slot = document.createElement('div');
+    slot.className = 'dock-tool-group ext-toolbar-slot';
+    slot.id = 'group-cat-extensions';
+    slot.dataset.cat = 'all';
+
+    const heading = document.createElement('div');
+    heading.className = 'dock-group-heading';
+    const span = document.createElement('span');
+    span.textContent = 'Add-ons';
+    heading.appendChild(span);
+    slot.appendChild(heading);
+
+    const grid = document.createElement('div');
+    grid.className = 'dock-group-grid';
+    grid.id = 'ext-toolbar-grid';
+    slot.appendChild(grid);
+
+    toolsContainer.appendChild(slot);
+    return slot;
+  },
+
+  renderToolbarAction(action) {
+    if (!action || typeof document === 'undefined') return;
+    const slot = this.ensureToolbarSlot();
+    if (!slot) return;
+
+    const grid = (typeof slot.querySelector === 'function' && (slot.querySelector('#ext-toolbar-grid') || slot.querySelector('.dock-group-grid'))) || slot;
+
+    const existingBtn = document.getElementById(`btn-ext-${action.id}`);
+    if (existingBtn && existingBtn.parentNode && typeof existingBtn.parentNode.removeChild === 'function') {
+      existingBtn.parentNode.removeChild(existingBtn);
+    }
+
+    const escFn = (typeof UI !== 'undefined' && UI._esc) ? UI._esc : _escapeHtml;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = `btn-ext-${escFn(action.id)}`;
+    btn.className = 'btn btn-hud ext-toolbar-action';
+    btn.title = `${escFn(action.label)}${action.shortcutHint ? ' [' + escFn(action.shortcutHint) + ']' : ''}`;
+
+    let iconHtml = '';
+    if (action.iconSvg && typeof action.iconSvg === 'string') {
+      iconHtml = `<span class="hud-icon">${action.iconSvg}</span>`;
+    } else {
+      iconHtml = `<span class="hud-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m12 8 4 4-4 4M8 12h8"/></svg></span>`;
+    }
+
+    btn.innerHTML = `${iconHtml} <span class="hud-label">${escFn(action.label)}</span>`;
+
+    btn.addEventListener('click', (ev) => {
+      if (typeof UI !== 'undefined' && UI.triggerHotkeyFeedback) {
+        UI.triggerHotkeyFeedback(btn.id);
+      }
+      if (typeof action.onClick === 'function') {
+        try {
+          action.onClick(ev);
+        } catch (err) {
+          console.warn(`[Extensions] Error executing toolbar action '${action.id}':`, err);
+        }
+      }
+    });
+
+    if (typeof grid.appendChild === 'function') {
+      grid.appendChild(btn);
+    }
+  },
+
+  renderAllToolbarActions() {
+    for (const action of this.toolbarActions.values()) {
+      this.renderToolbarAction(action);
+    }
+  },
+
+  registerPanel(panel) {
+    if (!panel || typeof panel !== 'object') {
+      console.warn('[Extensions] registerPanel: invalid panel configuration');
+      return null;
+    }
+    const { id, title, mount } = panel;
+    if (!id || typeof id !== 'string') {
+      console.warn('[Extensions] registerPanel: missing panel id');
+      return null;
+    }
+
+    const escFn = (typeof UI !== 'undefined' && UI._esc) ? UI._esc : _escapeHtml;
+    let hostEl = document.getElementById(`ext-panel-${id}`);
+    let bodyEl = null;
+
+    if (!hostEl && typeof document !== 'undefined' && document.body) {
+      hostEl = document.createElement('div');
+      hostEl.id = `ext-panel-${escFn(id)}`;
+      hostEl.className = 'modal-overlay ext-panel-host hidden';
+
+      const surfaceEl = document.createElement('div');
+      surfaceEl.className = 'ext-panel-surface';
+
+      const headerEl = document.createElement('div');
+      headerEl.className = 'ext-panel-header';
+
+      const titleEl = document.createElement('h3');
+      titleEl.className = 'ext-panel-title';
+      titleEl.textContent = title || id;
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'btn btn-icon ext-panel-close';
+      closeBtn.title = 'Close Panel';
+      closeBtn.innerHTML = (typeof UI !== 'undefined' && UI.getIconSvg) ? UI.getIconSvg('✕', 14) : '✕';
+      closeBtn.addEventListener('click', () => {
+        hostEl.classList.add('hidden');
+      });
+
+      headerEl.appendChild(titleEl);
+      headerEl.appendChild(closeBtn);
+
+      bodyEl = document.createElement('div');
+      bodyEl.className = 'ext-panel-body';
+
+      surfaceEl.appendChild(headerEl);
+      surfaceEl.appendChild(bodyEl);
+      hostEl.appendChild(surfaceEl);
+
+      hostEl.addEventListener('click', (e) => {
+        if (e.target === hostEl) {
+          hostEl.classList.add('hidden');
+        }
+      });
+
+      if (typeof document.body.appendChild === 'function') {
+        document.body.appendChild(hostEl);
+      }
+    } else if (hostEl) {
+      bodyEl = (typeof hostEl.querySelector === 'function') ? hostEl.querySelector('.ext-panel-body') : null;
+    }
+
+    if (bodyEl && typeof mount === 'function') {
+      try {
+        mount(bodyEl);
+      } catch (err) {
+        console.warn(`[Extensions] Error mounting panel '${id}':`, err);
+      }
+    }
+
+    const panelEntry = {
+      id,
+      title: title || id,
+      hostEl,
+      containerEl: bodyEl,
+      open: () => hostEl && hostEl.classList && hostEl.classList.remove('hidden'),
+      close: () => hostEl && hostEl.classList && hostEl.classList.add('hidden'),
+      toggle: () => hostEl && hostEl.classList && hostEl.classList.toggle('hidden')
+    };
+    this.panels.set(id, panelEntry);
+    return panelEntry;
+  },
+
+  registerStageMode(stageMode) {
+    if (!stageMode || typeof stageMode !== 'object') {
+      console.warn('[Extensions] registerStageMode: invalid stage mode configuration');
+      return;
+    }
+    const { id, label, onEnter, onExit } = stageMode;
+    if (!id || typeof id !== 'string') {
+      console.warn('[Extensions] registerStageMode: missing stage mode id');
+      return;
+    }
+
+    this.stageModes.set(id, {
+      id,
+      label: label || id,
+      onEnter: typeof onEnter === 'function' ? onEnter : null,
+      onExit: typeof onExit === 'function' ? onExit : null
+    });
+  },
+
+  enterStageMode(id, context = {}) {
+    const mode = this.stageModes.get(id);
+    if (!mode) return false;
+
+    if (this.activeStageModeId && this.activeStageModeId !== id) {
+      this.exitStageMode();
+    }
+
+    let stageHost = document.querySelector('.ext-stage-host');
+    const imageStage = document.getElementById('image-stage') || document.getElementById('session-image-container');
+    if (!stageHost && imageStage) {
+      stageHost = document.createElement('div');
+      stageHost.className = 'ext-stage-host';
+      stageHost.id = 'ext-stage-host';
+      if (typeof imageStage.appendChild === 'function') {
+        imageStage.appendChild(stageHost);
+      }
+    }
+
+    const imageFrame = document.getElementById('image-frame');
+    if (imageFrame && imageFrame.classList) {
+      imageFrame.classList.add('ext-dormant');
+    }
+
+    if (stageHost) {
+      if (stageHost.classList) stageHost.classList.remove('hidden');
+      stageHost.innerHTML = '';
+    }
+
+    this.activeStageModeId = id;
+    if (mode.onEnter && stageHost) {
+      try {
+        mode.onEnter(stageHost, context);
+      } catch (err) {
+        console.warn(`[Extensions] Error in stage mode '${id}' onEnter:`, err);
+      }
+    }
+    return true;
+  },
+
+  exitStageMode() {
+    if (!this.activeStageModeId) return;
+    const mode = this.stageModes.get(this.activeStageModeId);
+    if (mode && mode.onExit) {
+      try {
+        mode.onExit();
+      } catch (err) {
+        console.warn(`[Extensions] Error in stage mode '${this.activeStageModeId}' onExit:`, err);
+      }
+    }
+
+    const stageHost = document.querySelector('.ext-stage-host');
+    if (stageHost) {
+      if (stageHost.classList) stageHost.classList.add('hidden');
+      stageHost.innerHTML = '';
+    }
+
+    const imageFrame = document.getElementById('image-frame');
+    if (imageFrame && imageFrame.classList) {
+      imageFrame.classList.remove('ext-dormant');
+    }
+
+    this.activeStageModeId = null;
+  },
+
+  registerShortcut(shortcut) {
+    if (!shortcut || typeof shortcut !== 'object') {
+      console.warn('[Extensions] registerShortcut: invalid shortcut configuration');
+      return;
+    }
+    const { key, shift, ctrlOrCmd, description, handler } = shortcut;
+    if (!key || typeof key !== 'string') {
+      console.warn('[Extensions] registerShortcut: missing key');
+      return;
+    }
+    if (typeof handler !== 'function') {
+      console.warn('[Extensions] registerShortcut: handler must be a function');
+      return;
+    }
+
+    this.shortcuts.push({
+      key: key.toLowerCase(),
+      shift: Boolean(shift),
+      ctrlOrCmd: Boolean(ctrlOrCmd),
+      description: description || '',
+      handler
+    });
+  },
+
+  handleKeyboard(e) {
+    if (!e || !e.key || this.shortcuts.length === 0) return false;
+
+    const isCtrlOrCmd = Boolean(e.metaKey || e.ctrlKey);
+    const isShift = Boolean(e.shiftKey);
+    const eventKey = e.key.toLowerCase();
+
+    for (const sc of this.shortcuts) {
+      if (sc.key === eventKey && sc.ctrlOrCmd === isCtrlOrCmd && sc.shift === isShift) {
+        try {
+          if (typeof e.preventDefault === 'function') e.preventDefault();
+          sc.handler(e);
+          return true;
+        } catch (err) {
+          console.warn(`[Extensions] Error handling shortcut '${sc.key}':`, err);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+};
+
+const StudioExtensions = Object.freeze({
+  registerFeature: (initFn) => ExtensionHost.registerFeature(initFn)
+});
+
+if (typeof window !== 'undefined') {
+  window.StudioExtensions = StudioExtensions;
+  window.ExtensionHost = ExtensionHost;
+}
+
 // ==================== UI CONTROLLER ====================
 const UI = {
   currentDeckId: null,
@@ -5211,7 +6239,7 @@ const UI = {
   isZenMode: false,
   isPiPActive: false,
   isSafariVideoPiP: false,
-  isElectron: /Electron/i.test(navigator.userAgent) || window.location.search.includes('electron=1'),
+  isElectron: /Electron/i.test(navigator.userAgent) || Boolean(typeof window !== 'undefined' && window.location && window.location.search && window.location.search.includes('electron=1')),
   isMac: /Macintosh|Mac OS X/i.test(navigator.userAgent),
   isElectronFloating: false,
   pipWindow: null,
@@ -5222,6 +6250,13 @@ const UI = {
   autoAdvance: false,
   _autoAdvanceTimer: null,
   selectedTagFilter: null,
+  activeDeckTab: 'study',
+  cachedImagesDeckId: null,
+  isBoardStageOpen: false,
+  sessionSource: null,
+  boardState: BoardManager,
+  drillManager: MemoryDrillManager,
+  _boardSearchDebounce: null,
   isTagDockOpen: false,
 
   async init() {
@@ -5236,6 +6271,7 @@ const UI = {
     DeckManager.init();
     CardManager.init();
     ReviewHistory.init();
+    MemoryDrillManager.init();
     await WallpaperManager.init();
     SketchOverlay.init();
     SketchComparison.init();
@@ -5246,7 +6282,17 @@ const UI = {
 
     this.initDueIcons();
     this.bindEvents();
+    this.updateFlashRecallUI();
     this.showDeckList();
+
+    // Fetch and dynamically load client extensions under CSP (script-src 'self')
+    try {
+      if (typeof ExtensionHost !== 'undefined' && typeof ExtensionHost.loadClientExtensions === 'function') {
+        ExtensionHost.loadClientExtensions();
+      }
+    } catch (extErr) {
+      console.warn('[Extensions] Error initializing client extensions:', extErr);
+    }
   },
 
   getIconSvg(name, size = 14, className = '') {
@@ -5451,6 +6497,116 @@ const UI = {
 
     // Deck Detail View
     document.getElementById('btn-back-to-list').addEventListener('click', () => this.showDeckList());
+
+    // Deck Detail Tabs
+    const tabStudy = document.getElementById('tab-btn-study');
+    const tabBoard = document.getElementById('tab-btn-board');
+    if (tabStudy) tabStudy.addEventListener('click', () => this.switchDeckTab('study'));
+    if (tabBoard) tabBoard.addEventListener('click', () => this.switchDeckTab('board'));
+
+    // Board Filter Controls
+    const boardSearchInput = document.getElementById('input-board-search');
+    const boardSearchClear = document.getElementById('btn-board-search-clear');
+    const boardClearFilters = document.getElementById('btn-board-clear-filters');
+    const boardTagsBar = document.getElementById('board-tags-bar');
+
+    if (boardSearchInput) {
+      boardSearchInput.addEventListener('input', (e) => {
+        clearTimeout(this._boardSearchDebounce);
+        const val = e.target.value;
+        this._boardSearchDebounce = setTimeout(() => {
+          this.setBoardSearchQuery(val);
+        }, 120);
+      });
+    }
+
+    if (boardSearchClear) {
+      boardSearchClear.addEventListener('click', () => {
+        const input = document.getElementById('input-board-search');
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+        this.setBoardSearchQuery('');
+      });
+    }
+
+    if (boardClearFilters) {
+      boardClearFilters.addEventListener('click', () => {
+        this.clearBoardFilters();
+      });
+    }
+
+    if (boardTagsBar) {
+      boardTagsBar.addEventListener('click', (e) => {
+        const chip = e.target.closest('.board-tag-chip');
+        if (!chip) return;
+        const tag = chip.dataset.tag;
+        this.setBoardTagFilter(tag);
+      });
+    }
+
+    // Board Grid Size (Small, Medium, Large)
+    document.querySelectorAll('.btn-board-size').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const size = e.currentTarget.dataset.size;
+        this.setBoardGridSize(size);
+      });
+    });
+
+    const boardGrid = document.getElementById('board-gallery-grid');
+    if (boardGrid) {
+      boardGrid.addEventListener('click', (e) => {
+        const tagPill = e.target.closest('.board-ref-tag-pill');
+        if (tagPill) {
+          e.stopPropagation();
+          const tag = tagPill.textContent.replace(/^#/, '').trim();
+          this.setBoardTagFilter(tag);
+          return;
+        }
+
+        const cardEl = e.target.closest('.board-ref-card');
+        if (!cardEl) return;
+        const refId = cardEl.dataset.id;
+        const refPath = cardEl.dataset.path;
+        const ref = (this.boardState.filteredReferences || this.cachedImages || []).find(r => r.id === refId || (refPath && r.path === refPath))
+          || { id: refId, path: refPath, name: cardEl.querySelector('.board-ref-title')?.textContent || '' };
+        this.selectBoardReference(ref, cardEl);
+        this.openBoardStage(ref);
+      });
+
+      boardGrid.addEventListener('dblclick', (e) => {
+        const cardEl = e.target.closest('.board-ref-card');
+        if (!cardEl) return;
+        const refId = cardEl.dataset.id;
+        const refPath = cardEl.dataset.path;
+        const ref = (this.boardState.filteredReferences || this.cachedImages || []).find(r => r.id === refId || (refPath && r.path === refPath))
+          || { id: refId, path: refPath, name: cardEl.querySelector('.board-ref-title')?.textContent || '' };
+        this.selectBoardReference(ref, cardEl);
+        this.openBoardStage(ref);
+      });
+
+      boardGrid.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          const cardEl = e.target.closest('.board-ref-card');
+          if (cardEl) {
+            e.preventDefault();
+            cardEl.click();
+          }
+        }
+      });
+
+      boardGrid.addEventListener('error', (e) => {
+        if (e.target && e.target.tagName === 'IMG' && e.target.classList.contains('board-ref-thumb')) {
+          e.target.style.display = 'none';
+          const parent = e.target.parentElement;
+          if (parent) {
+            const fallback = parent.querySelector('.board-card-fallback');
+            if (fallback) fallback.classList.remove('hidden');
+          }
+        }
+      }, true);
+    }
     document.getElementById('btn-edit-deck').addEventListener('click', () => this.openDeckModal(this.currentDeckId));
     document.getElementById('btn-delete-deck').addEventListener('click', () => this.openDeleteModal());
     document.getElementById('btn-study-new').addEventListener('click', () => this.startSession('new'));
@@ -5465,6 +6621,86 @@ const UI = {
         this.selectedTagFilter = null;
         this.renderDeckStats();
         this.renderDeckFocusTags();
+      });
+    }
+
+    // Flash & Recall (Memory Drill) Controls
+    const toggleDrill = document.getElementById('toggle-flash-recall');
+    if (toggleDrill) {
+      toggleDrill.addEventListener('change', (e) => {
+        SoundFX.click();
+        MemoryDrillManager.setEnabled(e.target.checked);
+        this.updateFlashRecallUI();
+      });
+    }
+
+    document.querySelectorAll('.btn-drill-pill').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        SoundFX.click();
+        const param = e.currentTarget.dataset.param;
+        const val = e.currentTarget.dataset.val;
+        if (param === 'observe') MemoryDrillManager.setObserveSec(val);
+        else if (param === 'draw') MemoryDrillManager.setDrawSec(val);
+        else if (param === 'veil') MemoryDrillManager.setVeilMode(val);
+        this.updateFlashRecallUI();
+      });
+    });
+
+    // Flash & Recall Stage Action Buttons
+    const btnDrillAction = document.getElementById('btn-drill-action');
+    if (btnDrillAction) {
+      btnDrillAction.addEventListener('click', () => {
+        SoundFX.click();
+        if (FlashRecallManager.phase === 'observe') {
+          FlashRecallManager.transitionToDraw();
+        } else if (FlashRecallManager.phase === 'draw') {
+          FlashRecallManager.transitionToReveal();
+        }
+      });
+    }
+
+    const btnDrillRevealCard = document.getElementById('btn-drill-reveal-card');
+    if (btnDrillRevealCard) {
+      btnDrillRevealCard.addEventListener('click', () => {
+        SoundFX.click();
+        if (FlashRecallManager.phase === 'draw') {
+          FlashRecallManager.transitionToReveal();
+        }
+      });
+    }
+
+    // Flash & Recall Self-Critique Quick Action Buttons
+    const btnDrillPaste = document.getElementById('btn-drill-paste');
+    if (btnDrillPaste) {
+      btnDrillPaste.addEventListener('click', () => {
+        SoundFX.click();
+        if (typeof SketchOverlay !== 'undefined') {
+          SketchOverlay.promptPasteOrUpload();
+        }
+      });
+    }
+
+    const btnDrillSideBySide = document.getElementById('btn-drill-sidebyside');
+    if (btnDrillSideBySide) {
+      btnDrillSideBySide.addEventListener('click', () => {
+        SoundFX.click();
+        if (typeof SketchComparison !== 'undefined') {
+          SketchComparison.toggleSplitView();
+        }
+      });
+    }
+
+    const btnDrillFlicker = document.getElementById('btn-drill-flicker');
+    if (btnDrillFlicker) {
+      btnDrillFlicker.addEventListener('click', () => {
+        SoundFX.click();
+        if (typeof SketchOverlay !== 'undefined') {
+          if (SketchOverlay.active) {
+            SketchOverlay.toggleVisibility();
+          } else {
+            SketchOverlay.promptPasteOrUpload();
+          }
+        }
       });
     }
 
@@ -5601,6 +6837,17 @@ const UI = {
 
     // Session View & Rating
     document.getElementById('btn-end-session').addEventListener('click', () => this.endSession());
+
+    // Reference Board Stage Navigation & Slideshow Dock
+    const btnBoardPrev = document.getElementById('btn-board-nav-prev');
+    const btnBoardNext = document.getElementById('btn-board-nav-next');
+    const selectBoardInterval = document.getElementById('select-board-slide-interval');
+    const btnBoardSlideToggle = document.getElementById('btn-board-slideshow-toggle');
+
+    if (btnBoardPrev) btnBoardPrev.addEventListener('click', () => this.stepBoardReference('prev'));
+    if (btnBoardNext) btnBoardNext.addEventListener('click', () => this.stepBoardReference('next'));
+    if (selectBoardInterval) selectBoardInterval.addEventListener('change', (e) => this.setBoardSlideInterval(e.target.value));
+    if (btnBoardSlideToggle) btnBoardSlideToggle.addEventListener('click', () => this.toggleBoardSlideshowPause());
     document.getElementById('btn-session-zen').addEventListener('click', () => this.toggleZenMode());
     document.getElementById('btn-session-pip').addEventListener('click', () => this.togglePiP());
     const btnElectronUnfloat = document.getElementById('btn-electron-unfloat');
@@ -6250,12 +7497,63 @@ const UI = {
 
   // ---- Keyboard Shortcuts ----
   handleKeyboard(e) {
-    if (e.metaKey || e.ctrlKey || e.altKey) {
+    // 1. Focus guard: If typing in an input/textarea/select, ignore hotkeys
+    if (document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
       return;
     }
 
-    // If typing in an input/textarea, ignore hotkeys
-    if (document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
+    // 2. Active FlashRecallManager BLIND_DRAW veil protections & phase routing
+    const drillMgr = (typeof FlashRecallManager !== 'undefined') ? FlashRecallManager : ((typeof MemoryDrillManager !== 'undefined') ? MemoryDrillManager : null);
+    const isBlindDrawVeilActive = Boolean(drillMgr && (drillMgr.phase === 'draw' || drillMgr.phase === 'blind_draw' || drillMgr.isVeiled));
+    if (isBlindDrawVeilActive) {
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof drillMgr.transitionToReveal === 'function') drillMgr.transitionToReveal();
+        return;
+      }
+      if (e.shiftKey && (e.key === 'S' || e.key === 's')) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.triggerHotkeyFeedback('btn-skip');
+        this.showNextImage();
+        return;
+      }
+      if (['1', '2', '3', '4'].includes(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      return;
+    }
+
+    if (drillMgr && drillMgr.enabled && drillMgr.phase === 'observe') {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof drillMgr.transitionToDraw === 'function') drillMgr.transitionToDraw();
+        return;
+      }
+      if (e.shiftKey && (e.key === 'S' || e.key === 's')) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.triggerHotkeyFeedback('btn-skip');
+        this.showNextImage();
+        return;
+      }
+      if (['1', '2', '3', '4'].includes(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    }
+
+    // 3. Extension shortcuts routed through central keydown listener
+    if (typeof ExtensionHost !== 'undefined' && ExtensionHost.handleKeyboard && ExtensionHost.handleKeyboard(e)) {
+      return;
+    }
+
+    // 4. Core single-key hotkey modifier guard (ignore Cmd/Ctrl/Alt combinations for standard atelier shortcuts)
+    if (e.metaKey || e.ctrlKey || e.altKey) {
       return;
     }
 
@@ -6326,12 +7624,33 @@ const UI = {
         this.closePiP(true);
         return;
       }
-      if (this.isZenMode) this.toggleZenMode(false);
+      if (this.isZenMode) {
+        this.toggleZenMode(false);
+        return;
+      }
+      if (inSession && (this.sessionSource === 'board' || this.isBoardStageOpen)) {
+        this.closeBoardStage();
+        return;
+      }
       return;
     }
 
     // Hotkeys active inside session view
     if (!inSession) return;
+
+    // Board Stage Mode Navigation: ArrowLeft / ArrowRight / J
+    if (this.sessionSource === 'board' || this.isBoardStageOpen) {
+      if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        this.stepBoardReference('prev');
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        this.stepBoardReference('next');
+        return;
+      }
+    }
 
     // Quick Tagging Mode: when dock is open, 1-6 toggle presets, T closes dock
     if (this.isTagDockOpen) {
@@ -6359,26 +7678,34 @@ const UI = {
 
     switch (e.key.toLowerCase()) {
       case '1':
+        if (this.sessionSource === 'board' || this.isBoardStageOpen) break;
         this.triggerHotkeyFeedback('btn-rate-again');
         this.rateCurrentImage('again');
         break;
       case '2':
+        if (this.sessionSource === 'board' || this.isBoardStageOpen) break;
         if (this.isPiPActive) break;
         this.triggerHotkeyFeedback('btn-rate-hard');
         this.rateCurrentImage('hard');
         break;
       case '3':
+        if (this.sessionSource === 'board' || this.isBoardStageOpen) break;
         if (this.isPiPActive) break;
         this.triggerHotkeyFeedback('btn-rate-medium');
         this.rateCurrentImage('medium');
         break;
       case '4':
+        if (this.sessionSource === 'board' || this.isBoardStageOpen) break;
         if (this.isPiPActive) break;
         this.triggerHotkeyFeedback('btn-rate-easy');
         this.rateCurrentImage('easy');
         break;
       case 's':
         if (e.shiftKey || this.imageBlurred) {
+          if (this.sessionSource === 'board' || this.isBoardStageOpen) {
+            this.stepBoardReference('next');
+            break;
+          }
           this.triggerHotkeyFeedback('btn-skip');
           this.showNextImage();
         } else {
@@ -6388,6 +7715,10 @@ const UI = {
         break;
       case ' ':
         e.preventDefault();
+        if (this.sessionSource === 'board' || this.isBoardStageOpen) {
+          this.toggleBoardSlideshowPause();
+          break;
+        }
         this.triggerHotkeyFeedback('btn-timer-pause');
         this.toggleTimerPause();
         break;
@@ -6534,6 +7865,13 @@ const UI = {
   },
 
   setZenMode(on, fromBrowser = false) {
+    // Zen mode is strictly for study sessions. Never activate Zen mode outside of an active session.
+    const inSession = document.body.classList.contains('in-session') ||
+      (document.getElementById('view-session') && document.getElementById('view-session').classList.contains('active'));
+    if (on && !inSession) {
+      return;
+    }
+
     this.isZenMode = on;
     document.body.classList.toggle('zen-active', on);
     document.body.classList.remove('hud-idle');
@@ -6600,8 +7938,11 @@ const UI = {
     // Sync native Electron fullscreen changes (e.g. macOS green button, Cmd+Ctrl+F, Esc)
     if (window.electronAPI && typeof window.electronAPI.onFullscreenChange === 'function') {
       window.electronAPI.onFullscreenChange((inFs) => {
-        if (inFs !== this.isZenMode) {
-          this.setZenMode(inFs, true);
+        if (!inFs && this.isZenMode) {
+          this.setZenMode(false, true);
+        }
+        if (typeof ArtistToolbox !== 'undefined' && typeof ArtistToolbox.fitImage === 'function') {
+          ArtistToolbox.fitImage(false);
         }
       });
     }
@@ -6654,6 +7995,7 @@ const UI = {
   },
 
   toggleRatingDock(force) {
+    if (this.sessionSource === 'board' || this.isBoardStageOpen) return;
     if (this.isElectronFloating || this.isPiPActive || document.body.classList.contains('pip-mode') || document.body.classList.contains('electron-float-active')) {
       return;
     }
@@ -7738,6 +9080,9 @@ const UI = {
     if (viewId !== 'view-session' && this.isPiPActive) {
       this.closePiP(true);
     }
+    if (viewId !== 'view-session' && this.isZenMode) {
+      this.setZenMode(false);
+    }
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     const target = document.getElementById(viewId);
     if (target) target.classList.add('active');
@@ -7746,6 +9091,11 @@ const UI = {
 
   // ---- Deck List View ----
   showDeckList() {
+    if (this.boardState) {
+      this.boardState.stopSlideshow();
+      const select = document.getElementById('select-board-slide-interval');
+      if (select) select.value = '0';
+    }
     this.showView('view-deck-list');
     this.renderDeckList();
   },
@@ -7982,13 +9332,48 @@ const UI = {
 
     this.showView('view-deck-detail');
 
+    // Reset board state on deck change
+    if (this.cachedImagesDeckId !== deckId) {
+      if (typeof BoardManager !== 'undefined') {
+        BoardManager.reset();
+        this.boardState = BoardManager;
+      } else {
+        this.boardState = {
+          activeDeckId: null,
+          allReferences: [],
+          searchQuery: '',
+          selectedTag: null,
+          selectedRef: null,
+          currentIndex: -1,
+          filteredReferences: [],
+          gridScrollTop: 0
+        };
+      }
+      const searchInput = document.getElementById('input-board-search');
+      if (searchInput) searchInput.value = '';
+    }
+
     // Load folder images
     try {
       this.cachedImages = await SessionManager.loadImages(deck.folderPath);
+      this.cachedImagesDeckId = deckId;
+      if (this.boardState) {
+        this.boardState.activeDeckId = deckId;
+        this.boardState.allReferences = this.cachedImages || [];
+        if (!this.boardState.filteredReferences || this.boardState.filteredReferences.length === 0) {
+          this.boardState.filteredReferences = [...(this.cachedImages || [])];
+        }
+      }
       // Automatically migrate legacy path cards to content-hash IDs
       CardManager.migrateLegacyPathCards(deckId, this.cachedImages);
     } catch (err) {
       this.cachedImages = [];
+      this.cachedImagesDeckId = deckId;
+      if (this.boardState) {
+        this.boardState.activeDeckId = deckId;
+        this.boardState.allReferences = [];
+        this.boardState.filteredReferences = [];
+      }
       this.showToast(`Folder load issue: ${err.message}`, 'alert');
     }
 
@@ -7997,6 +9382,774 @@ const UI = {
     this.renderHeatmap();
     this.renderActivityStats();
     this.renderTodaysReviewedCount();
+    this.updateFlashRecallUI();
+    this.switchDeckTab(this.activeDeckTab || 'study');
+  },
+
+  // ---- Deck Detail Tab Switching (Study SRS vs. Reference Board) ----
+  async switchDeckTab(tab) {
+    // If leaving Reference Board tab, capture scroll position
+    if (this.activeDeckTab === 'board' && tab !== 'board' && this.boardState) {
+      const boardView = document.getElementById('deck-view-board');
+      const grid = document.getElementById('board-gallery-grid');
+      let currentScroll = 0;
+      if (boardView && typeof boardView.scrollTop === 'number' && boardView.scrollTop > 0) {
+        currentScroll = boardView.scrollTop;
+      } else if (grid && typeof grid.scrollTop === 'number' && grid.scrollTop > 0) {
+        currentScroll = grid.scrollTop;
+      } else if (typeof window !== 'undefined' && typeof window.scrollY === 'number' && window.scrollY > 0) {
+        currentScroll = window.scrollY;
+      }
+      if (currentScroll > 0 || typeof this.boardState.gridScrollTop !== 'number') {
+        this.boardState.gridScrollTop = currentScroll;
+      }
+    }
+
+    this.activeDeckTab = tab === 'board' ? 'board' : 'study';
+    const isStudy = this.activeDeckTab === 'study';
+
+    if (isStudy && this.boardState) {
+      this.boardState.stopSlideshow();
+      const select = document.getElementById('select-board-slide-interval');
+      if (select) select.value = '0';
+    }
+
+    const btnStudy = document.getElementById('tab-btn-study');
+    const btnBoard = document.getElementById('tab-btn-board');
+    const viewStudy = document.getElementById('deck-view-study');
+    const viewBoard = document.getElementById('deck-view-board');
+
+    if (btnStudy) {
+      btnStudy.classList.toggle('active', isStudy);
+      btnStudy.setAttribute('aria-selected', String(isStudy));
+    }
+    if (btnBoard) {
+      btnBoard.classList.toggle('active', !isStudy);
+      btnBoard.setAttribute('aria-selected', String(!isStudy));
+    }
+    if (viewStudy) {
+      viewStudy.classList.toggle('hidden', !isStudy);
+    }
+    if (viewBoard) {
+      viewBoard.classList.toggle('hidden', isStudy);
+    }
+
+    if (!isStudy) {
+      if (typeof FlashRecallManager !== 'undefined') {
+        FlashRecallManager.reset();
+      }
+      this.clearBlurOverlay(true);
+      TimerManager.stop();
+      await this.loadBoardImagesIfNeeded();
+
+      // Synchronize search input from boardState.searchQuery
+      const searchInput = document.getElementById('input-board-search');
+      if (searchInput && this.boardState) {
+        searchInput.value = this.boardState.searchQuery || '';
+      }
+
+      this.applyBoardFilters();
+      this.renderBoardTags();
+      this.renderBoardGrid();
+
+      // Apply saved grid size (small, medium, large)
+      const savedGridSize = (this.boardState && this.boardState.gridSize)
+        || (() => { try { return localStorage.getItem('board_grid_size'); } catch (e) { return null; } })()
+        || 'medium';
+      this.setBoardGridSize(savedGridSize);
+
+      // Restore scroll position
+      const savedTop = (this.boardState && typeof this.boardState.gridScrollTop === 'number')
+        ? this.boardState.gridScrollTop
+        : 0;
+      if (viewBoard && typeof viewBoard.scrollTop === 'number') {
+        viewBoard.scrollTop = savedTop;
+      }
+      const grid = document.getElementById('board-gallery-grid');
+      if (grid && typeof grid.scrollTop === 'number') {
+        grid.scrollTop = savedTop;
+      }
+      if (typeof window !== 'undefined' && typeof window.scrollTo === 'function' && savedTop > 0) {
+        try { window.scrollTo(0, savedTop); } catch (e) { }
+      }
+    } else {
+      this.updateFlashRecallUI();
+    }
+  },
+
+  async loadBoardImagesIfNeeded() {
+    if (this.cachedImages && this.cachedImagesDeckId === this.currentDeckId) {
+      if (this.boardState) {
+        this.boardState.activeDeckId = this.currentDeckId;
+        this.boardState.allReferences = this.cachedImages || [];
+      }
+      return this.cachedImages;
+    }
+    const deck = DeckManager.getById(this.currentDeckId);
+    if (!deck || !deck.folderPath) {
+      this.cachedImages = [];
+      this.cachedImagesDeckId = this.currentDeckId;
+      if (this.boardState) {
+        this.boardState.activeDeckId = this.currentDeckId;
+        this.boardState.allReferences = [];
+      }
+      return [];
+    }
+    try {
+      this.cachedImages = await SessionManager.loadImages(deck.folderPath);
+      this.cachedImagesDeckId = this.currentDeckId;
+      if (this.boardState) {
+        this.boardState.activeDeckId = this.currentDeckId;
+        this.boardState.allReferences = this.cachedImages || [];
+      }
+      CardManager.migrateLegacyPathCards(this.currentDeckId, this.cachedImages);
+    } catch (err) {
+      this.cachedImages = [];
+      this.cachedImagesDeckId = this.currentDeckId;
+      if (this.boardState) {
+        this.boardState.activeDeckId = this.currentDeckId;
+        this.boardState.allReferences = [];
+      }
+    }
+    return this.cachedImages;
+  },
+
+  applyBoardFilters() {
+    const images = this.cachedImages || [];
+    const deckCards = (typeof CardManager !== 'undefined' && this.currentDeckId)
+      ? CardManager.getCardsForDeck(this.currentDeckId)
+      : {};
+
+    const query = (this.boardState.searchQuery || '').trim().toLowerCase();
+    const activeTag = this.boardState.selectedTag ? this.boardState.selectedTag.toLowerCase() : null;
+
+    const filtered = images.filter(img => {
+      const card = deckCards[img.id] || (img.path && deckCards[img.path]);
+      const tags = (card && Array.isArray(card.tags)) ? card.tags : [];
+
+      // 1. Tag filter match
+      if (activeTag && activeTag !== 'all') {
+        const hasTag = tags.some(t => t.toLowerCase().replace(/^#/, '') === activeTag);
+        if (!hasTag) return false;
+      }
+
+      // 2. Search query match (filename, path, or tag partial match)
+      if (query) {
+        const nameMatch = (img.name || '').toLowerCase().includes(query);
+        const pathMatch = (img.path || '').toLowerCase().includes(query);
+        const tagMatch = tags.some(t => t.toLowerCase().includes(query));
+        if (!nameMatch && !pathMatch && !tagMatch) return false;
+      }
+
+      return true;
+    });
+
+    this.boardState.filteredReferences = filtered;
+
+    // Requirement 4: Predictable selection behavior
+    if (this.boardState.selectedRef) {
+      const foundIdx = filtered.findIndex(r => r.id === this.boardState.selectedRef.id || (r.path && r.path === this.boardState.selectedRef.path));
+      if (foundIdx !== -1) {
+        this.boardState.currentIndex = foundIdx;
+      } else {
+        this.boardState.selectedRef = null;
+        this.boardState.currentIndex = -1;
+      }
+    } else {
+      this.boardState.currentIndex = -1;
+    }
+
+    return filtered;
+  },
+
+  renderBoardTags() {
+    const tagsBar = document.getElementById('board-tags-bar');
+    if (!tagsBar) return;
+
+    const images = this.cachedImages || [];
+    const deckCards = (typeof CardManager !== 'undefined' && this.currentDeckId)
+      ? CardManager.getCardsForDeck(this.currentDeckId)
+      : {};
+
+    const tagCounts = new Map();
+    images.forEach(img => {
+      const card = deckCards[img.id] || (img.path && deckCards[img.path]);
+      if (card && Array.isArray(card.tags)) {
+        card.tags.forEach(t => {
+          const clean = (t || '').trim().toLowerCase().replace(/^#/, '');
+          if (clean) {
+            tagCounts.set(clean, (tagCounts.get(clean) || 0) + 1);
+          }
+        });
+      }
+    });
+
+    const isAllActive = !this.boardState.selectedTag || this.boardState.selectedTag === 'all';
+    let html = `
+      <button type="button" class="board-tag-chip${isAllActive ? ' active' : ''}" data-tag="all" role="tab" aria-selected="${isAllActive}">
+        All Tags <span class="chip-count">(${images.length})</span>
+      </button>
+    `;
+
+    const sortedTags = Array.from(tagCounts.keys()).sort();
+    sortedTags.forEach(tag => {
+      const active = this.boardState.selectedTag === tag;
+      const count = tagCounts.get(tag);
+      html += `
+        <button type="button" class="board-tag-chip${active ? ' active' : ''}" data-tag="${this._esc(tag)}" role="tab" aria-selected="${active}">
+          #${this._esc(tag)} <span class="chip-count">(${count})</span>
+        </button>
+      `;
+    });
+
+    tagsBar.innerHTML = html;
+  },
+
+  setBoardTagFilter(tag) {
+    const clean = (tag || '').trim().toLowerCase().replace(/^#/, '');
+    if (!clean || clean === 'all') {
+      this.boardState.selectedTag = null;
+    } else {
+      this.boardState.selectedTag = clean;
+    }
+    this.applyBoardFilters();
+    this.renderBoardTags();
+    this.renderBoardGrid();
+    this.updateBoardFilterStatus();
+  },
+
+  setBoardSearchQuery(query) {
+    this.boardState.searchQuery = (query || '').trim();
+    this.applyBoardFilters();
+    this.renderBoardGrid();
+    this.updateBoardFilterStatus();
+  },
+
+  clearBoardFilters() {
+    this.boardState.searchQuery = '';
+    this.boardState.selectedTag = null;
+    const searchInput = document.getElementById('input-board-search');
+    if (searchInput) searchInput.value = '';
+    this.applyBoardFilters();
+    this.renderBoardTags();
+    this.renderBoardGrid();
+    this.updateBoardFilterStatus();
+  },
+
+  updateBoardFilterStatus() {
+    const totalCount = (this.cachedImages || []).length;
+    const filteredCount = (this.boardState.filteredReferences || []).length;
+
+    const countBadge = document.getElementById('board-ref-count');
+    if (countBadge) {
+      countBadge.textContent = `Showing ${filteredCount} of ${totalCount} reference${totalCount === 1 ? '' : 's'}`;
+    }
+
+    const clearBtn = document.getElementById('btn-board-clear-filters');
+    const hasFilter = Boolean(this.boardState.searchQuery || this.boardState.selectedTag);
+    if (clearBtn) {
+      clearBtn.classList.toggle('hidden', !hasFilter);
+    }
+
+    const searchClearBtn = document.getElementById('btn-board-search-clear');
+    if (searchClearBtn) {
+      searchClearBtn.classList.toggle('hidden', !this.boardState.searchQuery);
+    }
+  },
+
+  renderBoardGrid() {
+    const grid = document.getElementById('board-gallery-grid');
+    const emptyState = document.getElementById('board-empty-state');
+    const emptyTitle = document.getElementById('board-empty-title');
+    const emptyDesc = document.getElementById('board-empty-desc');
+    if (!grid) return;
+
+    const totalImages = this.cachedImages || [];
+    const images = this.boardState.filteredReferences || [];
+
+    if (images.length === 0) {
+      grid.innerHTML = '';
+      grid.classList.add('hidden');
+      if (emptyState) {
+        emptyState.classList.remove('hidden');
+        if (totalImages.length === 0) {
+          if (emptyTitle) emptyTitle.textContent = 'No references found in this deck';
+          if (emptyDesc) emptyDesc.textContent = "Add image files to the deck's folder or paste Pinterest/image URLs above.";
+        } else {
+          if (emptyTitle) emptyTitle.textContent = 'No references match your filter';
+          if (emptyDesc) emptyDesc.textContent = 'Try clearing the search query or selecting a different tag.';
+        }
+      }
+      this.updateBoardFilterStatus();
+      return;
+    }
+
+    if (emptyState) emptyState.classList.add('hidden');
+    grid.classList.remove('hidden');
+
+    const deckCards = (typeof CardManager !== 'undefined' && this.currentDeckId)
+      ? CardManager.getCardsForDeck(this.currentDeckId)
+      : {};
+
+    const selectedRef = this.boardState ? this.boardState.selectedRef : null;
+
+    grid.innerHTML = images.map(img => {
+      const card = deckCards[img.id] || (img.path && deckCards[img.path]);
+      const tags = (card && Array.isArray(card.tags)) ? card.tags : [];
+      const hasCrop = Boolean(card && card.cropImage && card.cropImage.cropUrl);
+      const isSelected = Boolean(selectedRef && (selectedRef.id === img.id || (img.path && selectedRef.path === img.path)));
+
+      const imgUrl = (typeof SessionManager !== 'undefined' && SessionManager.getImageUrl)
+        ? SessionManager.getImageUrl(img)
+        : `/api/image?path=${encodeURIComponent(img.path || img.id)}`;
+
+      const tagsHtml = tags.length > 0
+        ? `<div class="board-ref-tags">${tags.map(t => `<span class="board-ref-tag-pill">#${this._esc(t)}</span>`).join('')}</div>`
+        : '';
+
+      const cropBadge = hasCrop
+        ? `<span class="board-ref-focal-badge">Crop</span>`
+        : '';
+
+      return `
+        <div class="board-ref-card${isSelected ? ' selected' : ''}" data-id="${this._esc(img.id)}" data-path="${this._esc(img.path || '')}" tabindex="0" role="button" aria-label="${this._esc(img.name || '')}">
+          <div class="board-ref-thumb-wrap">
+            <img class="board-ref-thumb" src="${this._esc(imgUrl)}" alt="${this._esc(img.name || '')}" loading="lazy" decoding="async" draggable="false">
+            <div class="board-card-fallback hidden" aria-hidden="true">
+              <span class="fallback-icon">⚠️</span>
+              <span class="fallback-text">Unavailable</span>
+            </div>
+            ${cropBadge}
+            <div class="board-card-open-hint" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 3 21 3 21 9"/>
+                <polyline points="9 21 3 21 3 15"/>
+                <line x1="21" y1="3" x2="14" y2="10"/>
+                <line x1="3" y1="21" x2="10" y2="14"/>
+              </svg>
+              <span>Open</span>
+            </div>
+          </div>
+          <div class="board-ref-info">
+            <span class="board-ref-title" title="${this._esc(img.name || '')}">${this._esc(img.name || '')}</span>
+            ${tagsHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    this.updateBoardFilterStatus();
+  },
+
+  setBoardGridSize(size) {
+    if (!['small', 'medium', 'large'].includes(size)) size = 'medium';
+    if (this.boardState) {
+      this.boardState.gridSize = size;
+      if (typeof BoardManager !== 'undefined' && BoardManager.setGridSize) {
+        BoardManager.setGridSize(size);
+      }
+    }
+    try {
+      localStorage.setItem('board_grid_size', size);
+    } catch (e) {}
+
+    const grid = document.getElementById('board-gallery-grid');
+    if (grid) {
+      grid.classList.remove('size-small', 'size-medium', 'size-large');
+      grid.classList.add(`size-${size}`);
+    }
+
+    document.querySelectorAll('.btn-board-size').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.size === size);
+    });
+  },
+
+  updateFlashRecallUI() {
+    const mgr = (typeof MemoryDrillManager !== 'undefined') ? MemoryDrillManager : null;
+    if (!mgr) return;
+
+    const toggle = document.getElementById('toggle-flash-recall');
+    const statusText = document.getElementById('flash-recall-status-text');
+    const optionsBody = document.getElementById('flash-recall-options-body');
+
+    if (toggle) {
+      toggle.checked = mgr.enabled;
+    }
+    if (statusText) {
+      statusText.textContent = mgr.enabled ? 'On' : 'Off';
+      statusText.classList.toggle('active', mgr.enabled);
+    }
+    if (optionsBody) {
+      optionsBody.classList.toggle('drill-disabled', !mgr.enabled);
+    }
+
+    document.querySelectorAll('.btn-drill-pill').forEach(btn => {
+      const param = btn.dataset.param;
+      const val = btn.dataset.val;
+      let isActive = false;
+      if (param === 'observe') {
+        isActive = String(mgr.observeSec) === String(val);
+      } else if (param === 'draw') {
+        isActive = String(mgr.drawSec) === String(val);
+      } else if (param === 'veil') {
+        isActive = String(mgr.veilMode) === String(val);
+      }
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-checked', String(isActive));
+    });
+  },
+
+  selectBoardReference(ref, cardEl) {
+    if (!this.boardState) this.boardState = { selectedRef: null };
+    this.boardState.selectedRef = ref;
+
+    if (ref && this.boardState.filteredReferences) {
+      const foundIdx = this.boardState.filteredReferences.findIndex(r => r.id === ref.id || (r.path && r.path === ref.path));
+      this.boardState.currentIndex = foundIdx;
+    }
+
+    const grid = document.getElementById('board-gallery-grid');
+    if (grid) {
+      grid.querySelectorAll('.board-ref-card.selected').forEach(c => c.classList.remove('selected'));
+    }
+    if (cardEl) {
+      cardEl.classList.add('selected');
+    } else if (grid && ref) {
+      const el = grid.querySelector(`.board-ref-card[data-id="${ref.id}"]`);
+      if (el) el.classList.add('selected');
+    }
+  },
+
+  openBoardStage(ref) {
+    if (!ref && this.boardState && this.boardState.selectedRef) {
+      ref = this.boardState.selectedRef;
+    }
+    if (!ref && this.boardState && this.boardState.filteredReferences && this.boardState.filteredReferences.length > 0) {
+      ref = this.boardState.filteredReferences[0];
+    }
+    if (!ref) return;
+
+    this.selectBoardReference(ref);
+
+    const boardView = document.getElementById('deck-view-board');
+    const grid = document.getElementById('board-gallery-grid');
+    if (this.boardState) {
+      let currentScroll = 0;
+      if (boardView && typeof boardView.scrollTop === 'number' && boardView.scrollTop > 0) {
+        currentScroll = boardView.scrollTop;
+      } else if (grid && typeof grid.scrollTop === 'number' && grid.scrollTop > 0) {
+        currentScroll = grid.scrollTop;
+      } else if (typeof window !== 'undefined' && typeof window.scrollY === 'number' && window.scrollY > 0) {
+        currentScroll = window.scrollY;
+      }
+      if (currentScroll > 0 || typeof this.boardState.gridScrollTop !== 'number') {
+        this.boardState.gridScrollTop = currentScroll;
+      }
+    }
+
+    this.isBoardStageOpen = true;
+    this.sessionSource = 'board';
+    if (this.boardState) {
+      this.boardState.isStageOpen = true;
+    }
+    if (typeof BoardManager !== 'undefined') {
+      BoardManager.openStage(ref);
+    }
+
+    document.body.classList.add('board-stage-active');
+    const sessionView = document.getElementById('view-session');
+    if (sessionView) sessionView.classList.add('board-stage-active');
+
+    // Disarm timer and stop if running
+    TimerManager.stop();
+    const timerDisplay = document.getElementById('timer-display');
+    if (timerDisplay) timerDisplay.classList.add('hidden');
+
+    // Immediate cleanup of Flash & Recall when entering Board Stage
+    if (typeof FlashRecallManager !== 'undefined') {
+      FlashRecallManager.reset();
+    }
+
+    // Hide SRS rating area and clear blur overlay
+    const ratingArea = document.getElementById('session-rating-area');
+    if (ratingArea) ratingArea.classList.remove('rating-open');
+    this.clearBlurOverlay(true);
+
+    // Configure stage header for Board inspection
+    const deck = DeckManager.getById(this.currentDeckId);
+    const deckNameEl = document.getElementById('session-deck-name');
+    if (deckNameEl) {
+      deckNameEl.textContent = (deck ? deck.name : '') + ' • Reference Board';
+    }
+
+    const modeBadge = document.getElementById('session-mode-label');
+    if (modeBadge) {
+      modeBadge.textContent = 'Reference Stage';
+      modeBadge.className = 'session-mode-badge board-mode';
+      modeBadge.classList.add('board-mode');
+      modeBadge.dataset.mode = 'board';
+    }
+
+    const endBtn = document.getElementById('btn-end-session');
+    if (endBtn) {
+      endBtn.innerHTML = '<span>←</span> Back to Board';
+      endBtn.title = 'Return to Reference Board [Esc]';
+    }
+
+    this.showView('view-session');
+    const reviewEmpty = document.getElementById('review-empty');
+    if (reviewEmpty) reviewEmpty.classList.add('hidden');
+    this.showSessionContent(true);
+
+    this.renderBoardStageImage(ref);
+    this.updateBoardNavUI();
+  },
+
+  renderBoardStageImage(ref) {
+    if (!ref) return;
+
+    ArtistToolbox.reset();
+
+    // Reset sketch overlay when advancing to new reference
+    if (typeof SketchOverlay !== 'undefined' && SketchOverlay.active) {
+      SketchOverlay.clear();
+    }
+    if (typeof SmartCropManager !== 'undefined' && SmartCropManager.isCropping) {
+      SmartCropManager.cancelCrop();
+    }
+
+    // Set SessionManager context pointers (without starting session or queue)
+    SessionManager.currentImage = ref;
+    SessionManager.deckId = this.currentDeckId;
+
+    const frame = document.getElementById('image-frame');
+    const imgEl = document.getElementById('session-image');
+
+    if (frame) {
+      frame.classList.remove('is-loaded', 'image-entering', 'is-loading');
+      frame.classList.add('is-loading');
+    }
+
+    const handleImageLoad = () => {
+      ArtistToolbox.fitImage(false);
+      if (frame) {
+        frame.classList.remove('is-loading');
+        frame.classList.add('is-loaded', 'image-entering');
+        setTimeout(() => frame.classList.remove('image-entering'), 420);
+      }
+
+      if (typeof ColorPaletteManager !== 'undefined') {
+        ColorPaletteManager.onImageLoaded(imgEl);
+      }
+
+      if (typeof SmartCropManager !== 'undefined') {
+        SmartCropManager.onImageLoaded(ref);
+      }
+
+      if (typeof PlumbTool !== 'undefined') {
+        PlumbTool.onImageLoaded(imgEl);
+      }
+    };
+
+    const handleImageError = () => {
+      if (frame) frame.classList.remove('is-loading');
+      this.showToast('Could not load this reference', 'alert');
+    };
+
+    if (imgEl) {
+      imgEl.addEventListener('load', handleImageLoad, { once: true });
+      imgEl.addEventListener('error', handleImageError, { once: true });
+
+      const card = CardManager.getCard(this.currentDeckId, ref.id);
+      const hasCropImage = Boolean(card && card.cropImage && card.cropImage.cropUrl);
+
+      if (hasCropImage) {
+        imgEl.src = card.cropImage.cropUrl;
+        if (typeof SmartCropManager !== 'undefined') {
+          SmartCropManager.isFocalMode = true;
+        }
+      } else {
+        imgEl.src = (typeof SessionManager !== 'undefined' && SessionManager.getImageUrl)
+          ? SessionManager.getImageUrl(ref)
+          : `/api/image?path=${encodeURIComponent(ref.path || ref.id)}`;
+        if (typeof SmartCropManager !== 'undefined') {
+          SmartCropManager.isFocalMode = false;
+        }
+      }
+      if (imgEl.complete && imgEl.naturalWidth > 0) handleImageLoad();
+    }
+
+    if (typeof SketchComparison !== 'undefined') {
+      SketchComparison.onCardLoaded(this.currentDeckId, ref.id);
+    }
+
+    const nameEl = document.getElementById('session-image-name');
+    if (nameEl) {
+      nameEl.textContent = ref.name || '';
+      nameEl.classList.remove('img-name-new');
+      void nameEl.offsetWidth;
+      nameEl.classList.add('img-name-new');
+    }
+
+    if ('mediaSession' in navigator && ref) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: ref.name || 'Reference',
+          artist: 'Art Practice • Reference Board',
+          album: 'ArtPractice Observational Reference'
+        });
+      } catch (e) { }
+    }
+
+    this.renderSessionCardTags();
+  },
+
+  stepBoardReference(direction) {
+    if (!this.boardState || !this.isBoardStageOpen) return;
+    const ref = direction === 'prev'
+      ? this.boardState.prevReference()
+      : this.boardState.nextReference();
+    if (!ref) return;
+
+    this.renderBoardStageImage(ref);
+    this.updateBoardNavUI();
+  },
+
+  updateBoardNavUI() {
+    if (!this.boardState) return;
+    const cur = (this.boardState.currentIndex >= 0 ? this.boardState.currentIndex : 0) + 1;
+    const total = (this.boardState.filteredReferences && this.boardState.filteredReferences.length)
+      || (this.cachedImages && this.cachedImages.length)
+      || 1;
+
+    const posText = `${cur} / ${total}`;
+
+    const navPosEl = document.getElementById('board-nav-pos-text');
+    if (navPosEl) navPosEl.textContent = posText;
+
+    const progressEl = document.getElementById('session-progress');
+    if (progressEl) progressEl.textContent = posText;
+
+    const select = document.getElementById('select-board-slide-interval');
+    if (select && select.value !== String(this.boardState.slideshowIntervalSec)) {
+      select.value = String(this.boardState.slideshowIntervalSec);
+    }
+
+    const toggleBtn = document.getElementById('btn-board-slideshow-toggle');
+    const toggleIcon = document.getElementById('board-slideshow-toggle-icon');
+    const toggleText = document.getElementById('board-slideshow-toggle-text');
+
+    if (toggleBtn) {
+      if (this.boardState.slideshowIntervalSec > 0) {
+        toggleBtn.classList.remove('hidden');
+        if (this.boardState.slideshowPaused) {
+          toggleBtn.classList.add('paused');
+          if (toggleIcon) toggleIcon.textContent = '▶';
+          if (toggleText) toggleText.textContent = 'Resume';
+        } else {
+          toggleBtn.classList.remove('paused');
+          if (toggleIcon) toggleIcon.textContent = '⏸';
+          if (toggleText) toggleText.textContent = 'Pause';
+        }
+      } else {
+        toggleBtn.classList.add('hidden');
+      }
+    }
+
+    // Synchronize highlighted card in board gallery grid
+    const ref = this.boardState.selectedRef;
+    const grid = document.getElementById('board-gallery-grid');
+    if (grid && ref) {
+      grid.querySelectorAll('.board-ref-card.selected').forEach(c => c.classList.remove('selected'));
+      const activeEl = grid.querySelector(`.board-ref-card[data-id="${ref.id}"]`);
+      if (activeEl) activeEl.classList.add('selected');
+    }
+  },
+
+  setBoardSlideInterval(val) {
+    const sec = parseInt(val, 10) || 0;
+    if (this.boardState) {
+      this.boardState.setSlideshowInterval(sec);
+    }
+    this.updateBoardNavUI();
+  },
+
+  toggleBoardSlideshowPause() {
+    if (!this.boardState || !this.isBoardStageOpen) return;
+    if (this.boardState.slideshowIntervalSec <= 0) return;
+    this.boardState.toggleSlideshowPause();
+    this.updateBoardNavUI();
+  },
+
+  closeBoardStage() {
+    this.isBoardStageOpen = false;
+    this.sessionSource = null;
+    if (this.boardState) {
+      this.boardState.isStageOpen = false;
+      this.boardState.stopSlideshow();
+    }
+    if (typeof BoardManager !== 'undefined') {
+      BoardManager.closeStage();
+    }
+
+    const select = document.getElementById('select-board-slide-interval');
+    if (select) select.value = '0';
+
+    document.body.classList.remove('board-stage-active');
+    const sessionView = document.getElementById('view-session');
+    if (sessionView) sessionView.classList.remove('board-stage-active');
+
+    const endBtn = document.getElementById('btn-end-session');
+    if (endBtn) {
+      endBtn.innerHTML = '<span>←</span> End Session';
+      endBtn.title = 'End Session';
+    }
+
+    const modeBadge = document.getElementById('session-mode-label');
+    if (modeBadge) {
+      modeBadge.classList.remove('board-mode');
+    }
+
+    if (typeof SketchOverlay !== 'undefined' && SketchOverlay.active) {
+      SketchOverlay.clear();
+    }
+    if (typeof SketchComparison !== 'undefined') {
+      SketchComparison.setMode('single');
+      SketchComparison.currentSketchDataUrl = null;
+    }
+    if (typeof ColorPaletteManager !== 'undefined') {
+      ColorPaletteManager.toggleHUD(false);
+    }
+    if (typeof SmartCropManager !== 'undefined') {
+      SmartCropManager.cancelCrop();
+    }
+    if (this.isPiPActive) this.closePiP(true);
+    if (this.isZenMode) this.toggleZenMode(false);
+    ArtistToolbox.reset();
+
+    // Clear SessionManager pointer
+    SessionManager.currentImage = null;
+
+    // Switch back to Deck Detail on Reference Board tab
+    this.showView('view-deck-detail');
+    this.activeDeckTab = 'board';
+    this.switchDeckTab('board');
+
+    // Restore thumbnail grid scroll position
+    const boardView = document.getElementById('deck-view-board');
+    const grid = document.getElementById('board-gallery-grid');
+    const savedTop = (this.boardState && typeof this.boardState.gridScrollTop === 'number')
+      ? this.boardState.gridScrollTop
+      : 0;
+    if (boardView && typeof boardView.scrollTop === 'number') {
+      boardView.scrollTop = savedTop;
+    }
+    if (grid && typeof grid.scrollTop === 'number') {
+      grid.scrollTop = savedTop;
+    }
+    if (typeof window !== 'undefined' && typeof window.scrollTo === 'function' && savedTop > 0) {
+      try { window.scrollTo(0, savedTop); } catch (e) { }
+    }
   },
 
   renderDeckStats() {
@@ -8427,6 +10580,17 @@ const UI = {
 
   // ---- Practice Session ----
   async startSession(mode) {
+    this.sessionSource = 'srs';
+    this.isBoardStageOpen = false;
+    document.body.classList.remove('board-stage-active');
+    const sessionView = document.getElementById('view-session');
+    if (sessionView) sessionView.classList.remove('board-stage-active');
+    const endBtn = document.getElementById('btn-end-session');
+    if (endBtn) {
+      endBtn.innerHTML = '<span>←</span> End Session';
+      endBtn.title = 'End Session';
+    }
+
     if (!this.cachedImages || this.cachedImages.length === 0) {
       alert('No images found in this deck folder.');
       return;
@@ -8473,6 +10637,7 @@ const UI = {
   },
 
   showNextImage() {
+    if (this.sessionSource === 'board' || this.isBoardStageOpen) return;
     const now = Date.now();
     if (this._lastNextTime && now - this._lastNextTime < 200) return;
     this._lastNextTime = now;
@@ -8596,11 +10761,17 @@ const UI = {
     }
 
 
-    document.getElementById('btn-timer-pause').textContent = 'Pause';
-    if (this.getTimerDuration() > 0 && TimerManager.isRunning()) {
-      TimerManager.reset();
-    } else if (this.getTimerDuration() > 0) {
-      this.startTimerIfNeeded();
+    if (typeof FlashRecallManager !== 'undefined' && FlashRecallManager.enabled) {
+      TimerManager.stop();
+      FlashRecallManager.startCard(SessionManager.deckId, image);
+    } else {
+      if (typeof FlashRecallManager !== 'undefined') FlashRecallManager.reset();
+      document.getElementById('btn-timer-pause').textContent = 'Pause';
+      if (this.getTimerDuration() > 0 && TimerManager.isRunning()) {
+        TimerManager.reset();
+      } else if (this.getTimerDuration() > 0) {
+        this.startTimerIfNeeded();
+      }
     }
   },
 
@@ -8640,6 +10811,7 @@ const UI = {
   },
 
   showBlurOverlay() {
+    if (this.sessionSource === 'board' || this.isBoardStageOpen) return;
     this.imageBlurred = true;
     document.getElementById('image-blur-overlay').classList.remove('hidden');
     document.getElementById('btn-skip').classList.add('hidden');
@@ -8648,7 +10820,10 @@ const UI = {
     this.wakeHud();
   },
 
-  clearBlurOverlay() {
+  clearBlurOverlay(force = false) {
+    if (!force && typeof FlashRecallManager !== 'undefined' && FlashRecallManager.enabled && FlashRecallManager.phase === 'draw') {
+      return; // Veil hardening: cannot clear blur overlay during BLIND_DRAW
+    }
     this.imageBlurred = false;
     document.getElementById('image-blur-overlay').classList.add('hidden');
     document.getElementById('btn-skip').classList.remove('hidden');
@@ -8676,7 +10851,14 @@ const UI = {
   },
 
   rateCurrentImage(difficulty) {
+    if (this.sessionSource === 'board' || this.isBoardStageOpen) return;
     if (!SessionManager.currentImage) return;
+
+    // Grading Gate: When Flash & Recall is enabled, ratings are strictly gated until REVEAL_CRITIQUE
+    if (typeof FlashRecallManager !== 'undefined' && FlashRecallManager.enabled && FlashRecallManager.phase !== 'reveal') {
+      return;
+    }
+
     const now = Date.now();
     if (this._lastRateTime && now - this._lastRateTime < 250) return;
     this._lastRateTime = now;
@@ -8699,7 +10881,9 @@ const UI = {
       );
     }
 
-    const duration = this.getTimerDuration ? this.getTimerDuration() : (TimerManager.duration || 0);
+    const duration = (typeof FlashRecallManager !== 'undefined' && FlashRecallManager.enabled && typeof FlashRecallManager.getElapsedDrillDuration === 'function')
+      ? FlashRecallManager.getElapsedDrillDuration()
+      : (this.getTimerDuration ? this.getTimerDuration() : (TimerManager.duration || 0));
 
     CardManager.rateCard(
       SessionManager.deckId,
@@ -8751,6 +10935,13 @@ const UI = {
   },
 
   async endSession() {
+    if (this.sessionSource === 'board' || this.isBoardStageOpen) {
+      this.closeBoardStage();
+      return;
+    }
+    if (typeof FlashRecallManager !== 'undefined') {
+      FlashRecallManager.reset();
+    }
     this.toggleTagDock(false);
     if (typeof SketchOverlay !== 'undefined' && SketchOverlay.active) {
       SketchOverlay.clear();
@@ -8937,6 +11128,8 @@ const UI = {
   },
 
   startTimerIfNeeded() {
+    if (this.sessionSource === 'board' || this.isBoardStageOpen) return;
+    if (typeof FlashRecallManager !== 'undefined' && FlashRecallManager.enabled) return;
     const duration = this.getTimerDuration();
     const timerDisplay = document.getElementById('timer-display');
 
@@ -8980,11 +11173,13 @@ const UI = {
   },
 
   toggleTimerPause() {
+    if (this.sessionSource === 'board' || this.isBoardStageOpen) return;
     const paused = TimerManager.togglePause();
     document.getElementById('btn-timer-pause').textContent = paused ? 'Resume' : 'Pause';
   },
 
   resetTimer() {
+    if (this.sessionSource === 'board' || this.isBoardStageOpen) return;
     TimerManager.reset();
     document.getElementById('btn-timer-pause').textContent = 'Pause';
   },
@@ -9217,6 +11412,8 @@ window.SketchOverlay = SketchOverlay;
 window.SketchComparison = SketchComparison;
 window.TimerManager = TimerManager;
 window.SessionManager = SessionManager;
+window.DeckManager = DeckManager;
+window.BoardManager = BoardManager;
 window.CardManager = CardManager;
 window.SoundFX = SoundFX;
 window.PiPState = PiPState;
@@ -9226,6 +11423,10 @@ window.PlumbTool = PlumbTool;
 window.FloatingWindowManager = FloatingWindowManager;
 window.localDateStr = localDateStr;
 window.isValidSketchUrl = isValidSketchUrl;
+window.ExtensionHost = ExtensionHost;
+window.StudioExtensions = StudioExtensions;
+if (typeof FlashRecallManager !== 'undefined') window.FlashRecallManager = FlashRecallManager;
+window.renderFilteredCanvas = renderFilteredCanvas;
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {

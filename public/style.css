@@ -132,14 +132,16 @@ body.has-wallpaper .wallpaper-overlay {
 /* Auto-dim custom wallpaper during active study so colors/values are never contaminated */
 body:has(#view-session.active) .wallpaper-overlay,
 body.in-session .wallpaper-overlay,
-body.zen-active .wallpaper-overlay {
+body.zen-active.in-session .wallpaper-overlay,
+body.zen-active:has(#view-session.active) .wallpaper-overlay {
   background: rgba(18, 18, 18, 0.96) !important;
   opacity: 1 !important;
 }
 
 body:has(#view-session.active) .wallpaper-bg,
 body.in-session .wallpaper-bg,
-body.zen-active .wallpaper-bg {
+body.zen-active.in-session .wallpaper-bg,
+body.zen-active:has(#view-session.active) .wallpaper-bg {
   opacity: 0.12 !important;
 }
 
@@ -1077,6 +1079,424 @@ kbd {
   border-color: var(--accent);
 }
 
+/* ==================== Flash & Recall (Memory Drill) Settings ==================== */
+.drill-settings {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 30px rgba(0, 0, 0, 0.22);
+}
+
+.drill-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.drill-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drill-title-group h3 {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.drill-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(217, 119, 6, 0.18);
+  color: #D97706;
+  border: 1px solid rgba(217, 119, 6, 0.35);
+}
+
+.drill-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin: 0 0 14px 0;
+  line-height: 1.4;
+}
+
+/* Toggle Switch */
+.drill-switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.drill-switch-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 24px;
+  text-align: right;
+}
+
+.drill-switch-text.active {
+  color: #D97706;
+}
+
+.drill-toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.drill-toggle-slider {
+  position: relative;
+  width: 38px;
+  height: 20px;
+  background: #262626;
+  border: 1px solid #383838;
+  border-radius: 20px;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.drill-toggle-slider::before {
+  content: "";
+  position: absolute;
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background: #888;
+  border-radius: 50%;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.drill-toggle-input:checked + .drill-toggle-slider {
+  background: rgba(217, 119, 6, 0.25);
+  border-color: #D97706;
+}
+
+.drill-toggle-input:checked + .drill-toggle-slider::before {
+  transform: translateX(18px);
+  background: #D97706;
+}
+
+.drill-toggle-input:focus-visible + .drill-toggle-slider {
+  outline: 2px solid #D97706;
+  outline-offset: 2px;
+}
+
+/* Options Body */
+.drill-options-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #282828;
+  transition: opacity 0.15s ease;
+}
+
+.drill-options-body.drill-disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.drill-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.drill-label {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 140px;
+}
+
+.drill-pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.btn-drill-pill {
+  background: #141414;
+  border: 1px solid #2e2e2e;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 5px 11px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  user-select: none;
+}
+
+.btn-drill-pill:hover {
+  color: var(--text-primary);
+  border-color: #444;
+  background: #1a1a1a;
+}
+
+.btn-drill-pill.active {
+  background: rgba(217, 119, 6, 0.15);
+  border-color: #D97706;
+  color: #F59E0B;
+  font-weight: 600;
+}
+
+.btn-drill-pill:focus-visible {
+  outline: 1px solid #D97706;
+}
+
+/* ==================== Flash & Recall Stage HUD Pill ==================== */
+.drill-stage-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: #1A1A1A;
+  padding: 8px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid #303030;
+  margin-bottom: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 16px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+}
+
+.drill-stage-hud.hidden {
+  display: none !important;
+}
+
+.drill-hud-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  color: #D97706;
+  letter-spacing: 0.04em;
+}
+
+.drill-hud-icon {
+  display: inline-flex;
+  align-items: center;
+  color: #D97706;
+}
+
+.drill-hud-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-drill-action {
+  background: #242424;
+  border: 1px solid #383838;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  user-select: none;
+}
+
+.btn-drill-action:hover {
+  background: #2e2e2e;
+  border-color: #D97706;
+  color: #F59E0B;
+}
+
+.btn-drill-action.hidden {
+  display: none !important;
+}
+
+.drill-critique-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.drill-critique-actions.hidden {
+  display: none !important;
+}
+
+.btn-drill-critique {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  background: #242424;
+  border: 1px solid #383838;
+  color: #E0E0E0;
+  border-radius: 4px;
+}
+
+.btn-drill-critique:hover {
+  background: #2E2E2E;
+  border-color: #D97706;
+  color: #F59E0B;
+}
+
+.btn-drill-critique .hud-critique-glyph {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.btn-drill-critique kbd {
+  background: #181818;
+  border: 1px solid #444;
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+  color: #999;
+}
+
+/* ==================== Flash & Recall Rating Gate ==================== */
+.rating-area.drill-rating-locked .rating-buttons,
+.rating-area.drill-rating-locked .rating-prompt,
+.rating-area.drill-rating-locked #rating-sketch-bar {
+  opacity: 0.35;
+  pointer-events: none;
+  filter: grayscale(60%);
+  user-select: none;
+}
+
+.rating-area.drill-rating-locked .session-nav-buttons,
+.rating-area.drill-rating-locked #btn-skip {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* ==================== Flash & Recall Stage Veil & Recall Prompt Card ==================== */
+.image-blur-overlay.drill-blind-active {
+  z-index: 25 !important;
+  pointer-events: auto !important;
+  animation: none !important;
+}
+
+.image-blur-overlay.drill-veil-blackout {
+  background: #121212 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.image-blur-overlay.drill-veil-blur {
+  background: rgba(18, 18, 18, 0.78) !important;
+  backdrop-filter: blur(40px) !important;
+  -webkit-backdrop-filter: blur(40px) !important;
+}
+
+/* Hide standard timer Time's Up card when drill is in Blind Draw */
+.image-blur-overlay.drill-blind-active .blur-card:not(.drill-recall-card) {
+  display: none !important;
+}
+
+.image-blur-overlay.drill-blind-active .blur-pulse-ring {
+  display: none !important;
+}
+
+/* Centered Recall Prompt Card */
+.drill-recall-card {
+  max-width: 440px;
+  margin: 0 auto;
+  background: #1A1A1A !important;
+  border: 1px solid #303030 !important;
+  border-radius: var(--radius-lg);
+  padding: 24px 32px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.drill-recall-card.hidden {
+  display: none !important;
+}
+
+.drill-recall-icon {
+  color: #D97706;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drill-mastery-container {
+  margin: 14px 0 16px;
+}
+
+.drill-mastery-container.hidden {
+  display: none !important;
+}
+
+.drill-mastery-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(217, 119, 6, 0.14);
+  border: 1px solid rgba(217, 119, 6, 0.4);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #F59E0B;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.drill-mastery-badge .mastery-sparkle {
+  color: #F59E0B;
+  font-size: 14px;
+  flex: none;
+}
+
+.drill-recall-actions {
+  margin: 16px 0 12px;
+}
+
+.btn-drill-reveal {
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #D97706;
+  border: 1px solid #D97706;
+  color: #ffffff;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.btn-drill-reveal:hover {
+  background: #b45309;
+  border-color: #b45309;
+}
+
 /* ==================== Sub-Deck Tagging & Focus Filters ==================== */
 .deck-focus-section {
   background: var(--bg-card);
@@ -1399,7 +1819,7 @@ kbd {
   z-index: 25;
 }
 
-.session-image-meta > * {
+.session-image-meta>* {
   pointer-events: auto;
 }
 
@@ -3248,11 +3668,13 @@ body.zen-active .toast-container,
 /* ==================== Zen / True Fullscreen ==================== */
 /* Reference fills the entire screen; header, timer controls, toolbar and rating dock
    float above it and fade away after a moment of mouse/keyboard idleness. */
-body.zen-active {
+body.zen-active.in-session,
+body.zen-active:has(#view-session.active) {
   overflow: hidden;
 }
 
-body.zen-active #app {
+body.zen-active.in-session #app,
+body.zen-active:has(#view-session.active) #app {
   max-width: none;
   padding: 0;
   min-height: 100vh;
@@ -3400,7 +3822,7 @@ body.zen-active .rating-area.rating-open {
   pointer-events: auto !important;
 }
 
-body.zen-active .rating-area.rating-open > * {
+body.zen-active .rating-area.rating-open>* {
   pointer-events: auto !important;
 }
 
@@ -7955,3 +8377,863 @@ body.is-electron.is-mac .deck-header {
 body.is-electron.is-mac .session-header {
   padding-left: 84px !important;
 }
+
+/* ==========================================================================
+   Dual-Mode Deck Detail (Study SRS vs. Reference Board) Tab Interface
+   ========================================================================== */
+
+/* Deck Mode Segmented Switcher */
+.deck-mode-tabs-bar {
+  display: inline-flex;
+  align-items: center;
+  background: #121212;
+  border: 1px solid #303030;
+  border-radius: 6px;
+  padding: 3px;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.deck-mode-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.deck-mode-tab:hover {
+  color: var(--text-primary);
+  background: #242424;
+}
+
+.deck-mode-tab.active {
+  color: #ffffff;
+  background: #242424;
+  border-color: #D97706;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.deck-mode-tab .tab-icon {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+}
+
+.deck-mode-tab.active .tab-icon {
+  color: #D97706;
+}
+
+/* Deck Tab View Containers */
+.deck-tab-view {
+  display: flex;
+  flex-direction: column;
+}
+
+.deck-tab-view.hidden {
+  display: none !important;
+}
+
+/* Reference Board Filter Bar */
+.board-filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #181818;
+  border: 1px solid #303030;
+  border-radius: 6px;
+  margin-bottom: 14px;
+  box-sizing: border-box;
+}
+
+.board-filter-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 260px;
+}
+
+.board-filter-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Board Grid Size Toggle Group */
+.board-grid-size-group {
+  display: inline-flex;
+  align-items: center;
+  background: #141414;
+  border: 1px solid #2e2e2e;
+  border-radius: 5px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.btn-board-size {
+  background: transparent;
+  border: none;
+  color: #737373;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.btn-board-size:hover {
+  color: #e5e5e5;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-board-size.active {
+  background: #282828;
+  color: #D97706;
+}
+
+.btn-board-size:focus-visible {
+  outline: 1px solid #D97706;
+}
+
+/* Board Search Field */
+.board-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.board-search-icon {
+  position: absolute;
+  left: 9px;
+  color: #737373;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.board-search-input {
+  background: #121212;
+  border: 1px solid #303030;
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 6px 28px 6px 28px;
+  font-size: 12px;
+  width: 220px;
+  transition: width 0.2s ease, border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.board-search-input:focus {
+  outline: none;
+  border-color: #D97706;
+  width: 260px;
+}
+
+.btn-board-search-clear {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 4px;
+  line-height: 1;
+}
+
+.btn-board-search-clear:hover {
+  color: #fff;
+}
+
+.btn-board-search-clear.hidden {
+  display: none !important;
+}
+
+/* Board Tag Filter Bar */
+.board-tags-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  max-width: 480px;
+  scrollbar-width: none;
+  padding: 2px 0;
+}
+
+.board-tags-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.board-tag-chip {
+  background: #242424;
+  border: 1px solid #303030;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #aaa;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.board-tag-chip:hover {
+  color: #fff;
+  background: #2e2e2e;
+  border-color: #444;
+}
+
+.board-tag-chip.active {
+  background: #D97706;
+  color: #fff;
+  border-color: #D97706;
+  font-weight: 600;
+}
+
+.board-tag-chip .chip-count {
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+/* Board Result Count Badge */
+.board-ref-count-badge {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+/* Reference Board Thumbnail Gallery Grid */
+.board-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+  padding: 4px 0 24px 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.board-gallery-grid.size-small {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.board-gallery-grid.size-small .board-ref-title {
+  font-size: 11px;
+}
+
+.board-gallery-grid.size-small .board-ref-info {
+  padding: 6px 8px;
+}
+
+.board-gallery-grid.size-small .board-ref-tag-pill {
+  font-size: 9px;
+  padding: 1px 4px;
+}
+
+.board-gallery-grid.size-medium {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.board-gallery-grid.size-large {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+.board-gallery-grid.size-large .board-ref-title {
+  font-size: 13px;
+}
+
+.board-gallery-grid.size-large .board-ref-info {
+  padding: 10px 12px;
+}
+
+.board-gallery-grid.hidden {
+  display: none !important;
+}
+
+.board-ref-card {
+  background: #1A1A1A;
+  border: 1px solid #303030;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.board-ref-card:hover {
+  transform: translateY(-2px);
+  border-color: #444;
+}
+
+.board-ref-card:focus-visible {
+  border-color: #D97706;
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.4);
+}
+
+.board-ref-card.selected {
+  border-color: #D97706;
+  box-shadow: 0 0 0 1px #D97706, 0 4px 14px rgba(217, 119, 6, 0.28);
+}
+
+.board-ref-thumb-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #121212;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.board-ref-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.board-card-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 16px;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  background: #161616;
+}
+
+.board-card-fallback.hidden {
+  display: none !important;
+}
+
+.board-card-fallback .fallback-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.board-card-fallback .fallback-text {
+  font-size: 10px;
+  color: #777;
+}
+
+.board-ref-focal-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(217, 119, 6, 0.92);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.3;
+}
+
+.board-ref-info {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #1A1A1A;
+}
+
+.board-ref-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.board-ref-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.board-ref-tag-pill {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: #888;
+  background: #242424;
+  border: 1px solid #303030;
+  padding: 1px 5px;
+  border-radius: 3px;
+  line-height: 1.2;
+}
+
+/* Reference Board Empty State */
+.board-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 72px 24px;
+  text-align: center;
+  background: #1A1A1A;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+.board-empty-state.hidden {
+  display: none !important;
+}
+
+.board-empty-icon {
+  color: #D97706;
+  background: #242424;
+  border: 1px solid #303030;
+  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.board-empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.board-empty-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 440px;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Reference Board Stage Decoupling & Isolation (Step 5)
+   Zero Continuous Animations (0.0% GPU Idle)
+   ========================================================================== */
+
+.board-stage-active #session-rating-area,
+.board-stage-active #timer-display,
+.board-stage-active #image-blur-overlay,
+.board-stage-active #btn-timer-pause,
+.board-stage-active #drill-stage-hud,
+.board-stage-active .rating-area {
+  display: none !important;
+}
+
+/* Board Mode Header Badge */
+.session-mode-badge.board-mode {
+  background: rgba(217, 119, 6, 0.16);
+  border: 1px solid rgba(217, 119, 6, 0.4);
+  color: #F59E0B;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+/* Reference Card Open Hint on Hover */
+.board-card-open-hint {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  background: rgba(18, 18, 18, 0.85);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid #303030;
+  border-radius: 4px;
+  color: #E0E0E0;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  z-index: 2;
+}
+
+.board-ref-card:hover .board-card-open-hint,
+.board-ref-card:focus-visible .board-card-open-hint {
+  opacity: 1;
+}
+
+.board-ref-card:hover .board-card-open-hint svg {
+  stroke: #D97706;
+}
+
+/* ==========================================================================
+   Reference Board Stage Navigation & Slideshow Dock (Step 6)
+   Zero Continuous Animations (0.0% GPU Idle)
+   ========================================================================== */
+
+.board-stage-nav-dock {
+  display: none;
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(24, 24, 24, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid #303030;
+  border-radius: 8px;
+  padding: 6px 12px;
+  z-index: 30;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+}
+
+.board-stage-active #board-stage-nav-dock {
+  display: flex !important;
+  align-items: center;
+}
+
+.board-nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-board-nav {
+  background: #242424;
+  border: 1px solid #303030;
+  color: var(--text-primary);
+  border-radius: 5px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  user-select: none;
+}
+
+.btn-board-nav:hover {
+  background: #2c2c2c;
+  border-color: #444;
+  color: #fff;
+}
+
+.btn-board-nav:active {
+  background: #1c1c1c;
+  border-color: #D97706;
+}
+
+.btn-board-nav .nav-kbd {
+  font-size: 10px;
+  padding: 1px 4px;
+  background: #181818;
+  border: 1px solid #383838;
+  border-radius: 3px;
+  color: #888;
+}
+
+.board-slideshow-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #1c1c1c;
+  border: 1px solid #303030;
+  border-radius: 5px;
+  padding: 3px 8px;
+}
+
+.board-slideshow-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #888;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+
+.board-slideshow-label svg {
+  color: #D97706;
+}
+
+.board-slide-select {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  padding: 2px 4px;
+}
+
+.board-slide-select option {
+  background: #1c1c1c;
+  color: var(--text-primary);
+}
+
+.btn-slideshow-toggle {
+  background: rgba(217, 119, 6, 0.16);
+  border-color: rgba(217, 119, 6, 0.35);
+  color: #F59E0B;
+}
+
+.btn-slideshow-toggle:hover {
+  background: rgba(217, 119, 6, 0.28);
+  border-color: #D97706;
+  color: #fff;
+}
+
+.btn-slideshow-toggle.paused {
+  background: #242424;
+  border-color: #303030;
+  color: #aaa;
+}
+
+.board-nav-position {
+  font-size: 12px;
+  font-weight: 600;
+  color: #aaa;
+  min-width: 48px;
+  text-align: center;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   Extension Host Styling (Munsell-neutral Dark Atelier Theme)
+   Zero continuous keyframes / 0.0% idle GPU footprint
+   ============================================================ */
+
+/* 1. Extension Toolbar Slot & Action Buttons */
+.ext-toolbar-slot {
+  margin-top: 8px;
+  border-top: 1px solid #282828;
+  padding-top: 8px;
+}
+
+.ext-toolbar-slot .dock-group-heading {
+  color: #888888;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  padding-left: 2px;
+}
+
+.ext-toolbar-action {
+  background: #242424;
+  border: 1px solid #303030;
+  color: #D4D4D4;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.ext-toolbar-action:hover {
+  background: #2A2A2A;
+  border-color: #3E3E3E;
+  color: #FFFFFF;
+}
+
+.ext-toolbar-action:active,
+.ext-toolbar-action.active {
+  background: #2E261B;
+  border-color: #D97706;
+  color: #F59E0B;
+  box-shadow: 0 0 0 1px #D97706;
+}
+
+.ext-toolbar-action .hud-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: currentColor;
+}
+
+.ext-toolbar-action .hud-label {
+  line-height: 1.2;
+}
+
+/* 2. Extension Panel Host (Munsell #1A1A1A surface with #303030 border) */
+.ext-panel-host {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ext-panel-host.hidden {
+  display: none !important;
+}
+
+.ext-panel-surface {
+  background: #1A1A1A;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.75);
+  color: #E5E5E5;
+  width: 90%;
+  max-width: 640px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ext-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #202020;
+  border-bottom: 1px solid #282828;
+}
+
+.ext-panel-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #F3F4F6;
+  letter-spacing: 0.02em;
+}
+
+.ext-panel-close {
+  background: transparent;
+  border: none;
+  color: #888888;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.ext-panel-close:hover {
+  color: #FFFFFF;
+  background: #2A2A2A;
+}
+
+.ext-panel-body {
+  padding: 16px;
+  background: #1A1A1A;
+  color: #CCCCCC;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+/* 3. Extension Stage Host (Munsell-neutral #121212 stage container) */
+.ext-stage-host {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #121212;
+  z-index: 5;
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+.ext-stage-host.hidden {
+  display: none !important;
+}
+
+.image-frame.ext-dormant {
+  display: none !important;
+}
+
+/* Optical filter compatibility for extension stage host */
+.filter-grayscale .ext-stage-host,
+.filter-grayscale .ext-stage-host img,
+.filter-grayscale .ext-stage-host canvas,
+.filter-grayscale .ext-stage-host video {
+  filter: grayscale(100%) contrast(1.1) !important;
+}
+
+.filter-invert .ext-stage-host,
+.filter-invert .ext-stage-host img,
+.filter-invert .ext-stage-host canvas,
+.filter-invert .ext-stage-host video {
+  filter: invert(100%) hue-rotate(180deg) !important;
+}
+
+.filter-grayscale.filter-invert .ext-stage-host,
+.filter-grayscale.filter-invert .ext-stage-host img,
+.filter-grayscale.filter-invert .ext-stage-host canvas,
+.filter-grayscale.filter-invert .ext-stage-host video {
+  filter: grayscale(100%) invert(100%) !important;
+}
+
+.filter-notan .ext-stage-host,
+.filter-notan .ext-stage-host img,
+.filter-notan .ext-stage-host canvas,
+.filter-notan .ext-stage-host video {
+  filter: grayscale(100%) contrast(1000%) !important;
+}
+
+.filter-squint .ext-stage-host,
+.filter-squint .ext-stage-host img,
+.filter-squint .ext-stage-host canvas,
+.filter-squint .ext-stage-host video {
+  filter: blur(var(--squint-radius, 6px)) !important;
+}
+

@@ -1373,15 +1373,24 @@ function createMainWindow(port) {
   });
 }
 
+let extensionMenuItems = [];
+const loadedMainExtensions = new Map();
+
+function isPathInside(childPath, parentPath) {
+  const rel = path.relative(parentPath, childPath);
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+}
+
 /**
  * Build native application menu with keyboard shortcuts
  */
 function setupApplicationMenu() {
+  if (!Menu || typeof Menu.buildFromTemplate !== 'function') return;
   const isMac = process.platform === 'darwin';
 
   const template = [
     ...(isMac ? [{
-      label: app.name,
+      label: app?.name || 'Art Practice Studio',
       submenu: [
         { role: 'about' },
         { type: 'separator' },
@@ -1495,6 +1504,10 @@ function setupApplicationMenu() {
         { role: 'togglefullscreen' }
       ]
     },
+    ...(extensionMenuItems.length > 0 ? [{
+      label: 'Add-ons',
+      submenu: extensionMenuItems
+    }] : []),
     {
       role: 'window',
       submenu: [
@@ -1512,6 +1525,153 @@ function setupApplicationMenu() {
 
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
+}
+
+function loadMainExtensions(options = {}) {
+  const extUserDataDir = options.userDataDir || process.env.USER_DATA_DIR || path.join(__dirname, 'userdata');
+  const searchDirs = options.searchDirs || [
+    path.join(extUserDataDir, 'extensions'),
+    path.join(__dirname, 'pro'),
+    path.resolve('./pro')
+  ];
+  const customIpcMain = options.ipcMain || ipcMain;
+  const customMainWindow = options.mainWindow !== undefined ? options.mainWindow : mainWindow;
+  const customServerPort = options.serverPort !== undefined ? options.serverPort : serverPort;
+  const customBrowserWindow = options.BrowserWindow !== undefined ? options.BrowserWindow : (typeof BrowserWindow !== 'undefined' ? BrowserWindow : null);
+
+  const uniqueDirs = [];
+  for (const d of searchDirs) {
+    try {
+      if (fs.existsSync(d)) {
+        const real = fs.realpathSync(d);
+        if (!uniqueDirs.includes(real)) uniqueDirs.push(real);
+      }
+    } catch (e) { }
+  }
+
+  const manifestDirs = [];
+  for (const baseDir of uniqueDirs) {
+    try {
+      const stat = fs.statSync(baseDir);
+      if (!stat.isDirectory()) continue;
+
+      if (fs.existsSync(path.join(baseDir, 'manifest.json'))) {
+        manifestDirs.push(baseDir);
+      }
+      const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory() && path.basename(entry.name) === entry.name) {
+          const sub = path.join(baseDir, entry.name);
+          try {
+            const realSub = fs.realpathSync(sub);
+            if (fs.existsSync(path.join(realSub, 'manifest.json')) && !manifestDirs.includes(realSub)) {
+              manifestDirs.push(realSub);
+            }
+          } catch (e) { }
+        }
+      }
+    } catch (e) { }
+  }
+
+  for (const extDir of manifestDirs) {
+    try {
+      const realExtDir = fs.realpathSync(extDir);
+      const manifestPath = path.join(realExtDir, 'manifest.json');
+      if (!fs.existsSync(manifestPath)) continue;
+
+      let manifest;
+      try {
+        const raw = fs.readFileSync(manifestPath, 'utf8');
+        manifest = JSON.parse(raw);
+      } catch (err) {
+        console.warn(`[Extensions] Invalid JSON in main manifest at ${manifestPath}:`, err.message);
+        continue;
+      }
+      if (!manifest || typeof manifest !== 'object') continue;
+
+      const { id, name, version, mainEntry } = manifest;
+      if (typeof id !== 'string' || !/^[a-z0-9-]+$/.test(id) || path.basename(id) !== id) continue;
+      if (typeof name !== 'string' || !name.trim()) continue;
+      if (typeof version !== 'string' || !version.trim()) continue;
+
+      if (!mainEntry || typeof mainEntry !== 'string') continue;
+
+      const normalizedMain = path.normalize(mainEntry);
+      if (path.isAbsolute(normalizedMain) || normalizedMain.startsWith('..')) {
+        console.warn(`[Extensions] Extension '${id}' mainEntry escapes folder: ${mainEntry}`);
+        continue;
+      }
+
+      const resolvedMain = path.resolve(realExtDir, normalizedMain);
+      let realMain;
+      try {
+        realMain = fs.realpathSync(resolvedMain);
+      } catch (e) {
+        console.warn(`[Extensions] Extension '${id}' mainEntry file not found: ${mainEntry}`);
+        continue;
+      }
+
+      if (!isPathInside(realMain, realExtDir) || !fs.statSync(realMain).isFile()) {
+        console.warn(`[Extensions] Extension '${id}' mainEntry escapes folder: ${mainEntry}`);
+        continue;
+      }
+
+      let registeredAnyMenu = false;
+      const api = {
+        registerIpc: (channel, handler) => {
+          if (typeof channel !== 'string' || !/^[a-zA-Z0-9:_-]+$/.test(channel)) {
+            throw new Error(`Invalid channel name: ${channel}`);
+          }
+          if (typeof handler !== 'function') {
+            throw new TypeError('IPC handler must be a function');
+          }
+          const fullChannel = `ext:${id}:${channel}`;
+          if (customIpcMain && typeof customIpcMain.handle === 'function') {
+            customIpcMain.handle(fullChannel, async (event, ...args) => {
+              if (!isTrustedIpcSender(event, customServerPort)) {
+                console.warn(`[Security] Blocked unauthorized IPC call to '${fullChannel}'`);
+                return { error: 'Unauthorized IPC sender' };
+              }
+              const callingWin = (event && event.sender && customBrowserWindow && typeof customBrowserWindow.fromWebContents === 'function')
+                ? customBrowserWindow.fromWebContents(event.sender)
+                : null;
+              if (callingWin && customMainWindow && callingWin !== customMainWindow) {
+                console.warn(`[Security] Blocked IPC '${fullChannel}' called from non-main child window`);
+                return { error: 'Unauthorized: main window only' };
+              }
+              return handler(event, ...args);
+            });
+          }
+        },
+        addMenuTemplate: (submenuItems) => {
+          if (Array.isArray(submenuItems)) {
+            extensionMenuItems.push(...submenuItems);
+            registeredAnyMenu = true;
+          } else if (submenuItems && typeof submenuItems === 'object') {
+            extensionMenuItems.push(submenuItems);
+            registeredAnyMenu = true;
+          }
+          if (registeredAnyMenu && typeof setupApplicationMenu === 'function') {
+            setupApplicationMenu();
+          }
+        }
+      };
+
+      const extModule = require(realMain);
+      if (typeof extModule.registerMainFeature === 'function') {
+        extModule.registerMainFeature(api);
+      } else if (typeof extModule === 'function') {
+        extModule(api);
+      } else {
+        console.warn(`[Extensions] Extension '${id}' mainEntry does not export registerMainFeature`);
+      }
+
+      loadedMainExtensions.set(id, { id, name, version });
+      console.log(`[Extensions] Loaded main extension: ${id} v${version}`);
+    } catch (err) {
+      console.warn(`[Extensions] Error loading main extension at ${extDir}:`, err.message);
+    }
+  }
 }
 
 // IPC Handlers for frontend float / always-on-top requests
@@ -1783,6 +1943,11 @@ if (isElectron && app) {
       serverInstance = server;
       serverPort = port;
       createMainWindow(serverPort);
+      try {
+        loadMainExtensions();
+      } catch (extErr) {
+        console.warn('[Extensions] Error during main extension discovery:', extErr.message);
+      }
     } catch (err) {
       console.error('[Electron] Failed to start studio:', err);
       app.quit();
@@ -1883,6 +2048,13 @@ module.exports = {
   isTrustedIpcSender,
   setServerPort,
   setMainWindow,
-  getMainWindow
+  getMainWindow,
+  loadMainExtensions,
+  loadedMainExtensions,
+  extensionMenuItems,
+  clearLoadedMainExtensions: () => {
+    loadedMainExtensions.clear();
+    extensionMenuItems.length = 0;
+  }
 };
 

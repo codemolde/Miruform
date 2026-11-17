@@ -86,6 +86,7 @@ fs.mkdirSync(BACKUPS_DIR, { recursive: true });
 
 // In-memory set of folders explicitly trusted (e.g. chosen via native folder picker this session)
 const trustedFolders = new Set();
+const extensionAllowedFolders = new Set();
 
 /**
  * Registers an absolute folder path into the trusted folders Set.
@@ -149,6 +150,11 @@ function isPathAllowedInRegisteredDecks(targetPath) {
   const deckFolders = getRegisteredDeckFolders();
   for (const df of deckFolders) {
     if (realTarget === df || isPathInside(realTarget, df)) {
+      return true;
+    }
+  }
+  for (const ef of extensionAllowedFolders) {
+    if (realTarget === ef || isPathInside(realTarget, ef)) {
       return true;
     }
   }
@@ -301,6 +307,282 @@ function scanForImages(dirPath, results = []) {
   }
 
   return results;
+}
+
+// ============================================================
+// Extension Discovery & Plugin API Subsystem
+// ============================================================
+const loadedExtensions = new Map();
+
+function getExtensionSearchDirs() {
+  const dirs = [
+    path.join(USERDATA_DIR, 'extensions'),
+    path.join(__dirname, 'pro'),
+    path.resolve('./pro')
+  ];
+  const unique = [];
+  for (const d of dirs) {
+    try {
+      if (fs.existsSync(d)) {
+        const real = fs.realpathSync(d);
+        if (!unique.includes(real)) {
+          unique.push(real);
+        }
+      }
+    } catch (e) { }
+  }
+  return unique;
+}
+
+function discoverExtensionManifestDirs(searchDirs) {
+  const manifestDirs = [];
+  for (const baseDir of searchDirs) {
+    try {
+      const stat = fs.statSync(baseDir);
+      if (!stat.isDirectory()) continue;
+
+      // Check if baseDir itself contains manifest.json
+      const directManifest = path.join(baseDir, 'manifest.json');
+      if (fs.existsSync(directManifest)) {
+        if (!manifestDirs.includes(baseDir)) {
+          manifestDirs.push(baseDir);
+        }
+      }
+
+      // Check immediate subdirectories
+      const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory() && path.basename(entry.name) === entry.name) {
+          const subDir = path.join(baseDir, entry.name);
+          try {
+            const realSub = fs.realpathSync(subDir);
+            const subManifest = path.join(realSub, 'manifest.json');
+            if (fs.existsSync(subManifest) && !manifestDirs.includes(realSub)) {
+              manifestDirs.push(realSub);
+            }
+          } catch (e) { }
+        }
+      }
+    } catch (e) { }
+  }
+  return manifestDirs;
+}
+
+function loadExtensions(options = {}) {
+  const searchDirs = options.searchDirs || getExtensionSearchDirs();
+  const extDirs = discoverExtensionManifestDirs(searchDirs);
+
+  for (const extDir of extDirs) {
+    try {
+      const realExtDir = fs.realpathSync(extDir);
+      const manifestPath = path.join(realExtDir, 'manifest.json');
+      if (!fs.existsSync(manifestPath)) continue;
+
+      let manifest;
+      try {
+        const raw = fs.readFileSync(manifestPath, 'utf8');
+        manifest = JSON.parse(raw);
+      } catch (err) {
+        console.warn(`[Extensions] Invalid JSON in manifest at ${manifestPath}:`, err.message);
+        continue;
+      }
+
+      if (!manifest || typeof manifest !== 'object') {
+        console.warn(`[Extensions] Manifest at ${manifestPath} must be a JSON object.`);
+        continue;
+      }
+
+      const { id, name, version, serverEntry, clientEntry, mainEntry } = manifest;
+
+      if (typeof id !== 'string' || !/^[a-z0-9-]+$/.test(id) || path.basename(id) !== id) {
+        console.warn(`[Extensions] Invalid extension id '${id}' at ${manifestPath}. Must match /^[a-z0-9-]+$/`);
+        continue;
+      }
+
+      if (typeof name !== 'string' || !name.trim()) {
+        console.warn(`[Extensions] Extension '${id}' must have a valid non-empty name.`);
+        continue;
+      }
+
+      if (typeof version !== 'string' || !version.trim()) {
+        console.warn(`[Extensions] Extension '${id}' must have a valid non-empty version.`);
+        continue;
+      }
+
+      if (loadedExtensions.has(id)) {
+        console.warn(`[Extensions] Extension '${id}' is already loaded; skipping duplicate at ${realExtDir}`);
+        continue;
+      }
+
+      // Validate clientEntry if defined
+      let validClientEntryPath = null;
+      if (clientEntry !== undefined && clientEntry !== null) {
+        if (typeof clientEntry !== 'string') {
+          console.warn(`[Extensions] Extension '${id}' clientEntry must be a string.`);
+          continue;
+        }
+        const normalizedClient = path.normalize(clientEntry);
+        if (path.isAbsolute(normalizedClient) || normalizedClient.startsWith('..')) {
+          console.warn(`[Extensions] Extension '${id}' clientEntry escapes extension folder: ${clientEntry}`);
+          continue;
+        }
+        const resolvedClient = path.resolve(realExtDir, normalizedClient);
+        try {
+          const realClient = fs.realpathSync(resolvedClient);
+          if (isPathInside(realClient, realExtDir) && fs.statSync(realClient).isFile()) {
+            validClientEntryPath = realClient;
+          } else {
+            console.warn(`[Extensions] Extension '${id}' clientEntry escapes extension folder: ${clientEntry}`);
+            continue;
+          }
+        } catch (e) {
+          console.warn(`[Extensions] Extension '${id}' clientEntry file not found: ${clientEntry}`);
+          continue;
+        }
+      }
+
+      // Validate and invoke serverEntry if defined
+      if (serverEntry !== undefined && serverEntry !== null) {
+        if (typeof serverEntry !== 'string') {
+          console.warn(`[Extensions] Extension '${id}' serverEntry must be a string.`);
+          continue;
+        }
+        const normalizedServer = path.normalize(serverEntry);
+        if (path.isAbsolute(normalizedServer) || normalizedServer.startsWith('..')) {
+          console.warn(`[Extensions] Extension '${id}' serverEntry escapes extension folder: ${serverEntry}`);
+          continue;
+        }
+        const resolvedServer = path.resolve(realExtDir, normalizedServer);
+        let realServer;
+        try {
+          realServer = fs.realpathSync(resolvedServer);
+        } catch (e) {
+          console.warn(`[Extensions] Extension '${id}' serverEntry file not found: ${serverEntry}`);
+          continue;
+        }
+
+        if (!isPathInside(realServer, realExtDir) || !fs.statSync(realServer).isFile()) {
+          console.warn(`[Extensions] Extension '${id}' serverEntry escapes extension folder: ${serverEntry}`);
+          continue;
+        }
+
+        const api = {
+                registerRoute: (method, subPath, handler) => {
+                  if (typeof method !== 'string') {
+                    throw new TypeError('HTTP method must be a string (GET, POST, DELETE)');
+                  }
+                  const httpMethod = method.toUpperCase();
+                  if (!['GET', 'POST', 'DELETE'].includes(httpMethod)) {
+                    throw new Error(`Unsupported HTTP method: ${method}. Allowed: GET, POST, DELETE`);
+                  }
+                  if (typeof handler !== 'function') {
+                    throw new TypeError('Route handler must be a function');
+                  }
+                  if (typeof subPath !== 'string') {
+                    throw new TypeError('Route subPath must be a string');
+                  }
+
+                  const posixSubPath = subPath.replace(/\\/g, '/');
+                  const normalizedSub = path.posix.normalize('/' + posixSubPath);
+                  if (normalizedSub.startsWith('/..') || normalizedSub.includes('/../')) {
+                    throw new Error(`Path traversal detected in subPath: ${subPath}`);
+                  }
+
+                  const routePath = `/api/ext/${id}${normalizedSub === '/' ? '' : normalizedSub}`;
+                  if (normalizedSub === '/') {
+                    app[httpMethod.toLowerCase()](`/api/ext/${id}`, handler);
+                    app[httpMethod.toLowerCase()](`/api/ext/${id}/`, handler);
+                  } else {
+                    app[httpMethod.toLowerCase()](routePath, handler);
+                  }
+                },
+                registerAllowedFolder: (dirPath) => {
+                  if (!dirPath || typeof dirPath !== 'string') {
+                    throw new TypeError('Allowed directory path must be a non-empty string');
+                  }
+                  let realDir;
+                  try {
+                    realDir = fs.realpathSync(dirPath);
+                  } catch (e) {
+                    throw new Error(`Allowed folder does not exist or cannot be accessed: ${dirPath}`);
+                  }
+                  const stat = fs.statSync(realDir);
+                  if (!stat.isDirectory()) {
+                    throw new Error(`Allowed folder must be a directory: ${dirPath}`);
+                  }
+                  extensionAllowedFolders.add(realDir);
+                },
+                userDataDir: USERDATA_DIR
+              };
+
+              const extModule = require(realServer);
+              if (typeof extModule.registerFeature === 'function') {
+                extModule.registerFeature(api);
+              } else if (typeof extModule === 'function') {
+                extModule(api);
+              } else {
+                console.warn(`[Extensions] Extension '${id}' serverEntry does not export registerFeature function.`);
+              }
+      }
+
+      loadedExtensions.set(id, {
+        id,
+        name,
+        version,
+        extDir: realExtDir,
+        clientEntryPath: validClientEntryPath,
+        hasClient: Boolean(validClientEntryPath)
+      });
+      console.log(`[Extensions] Loaded extension: ${id} v${version} (${name})`);
+    } catch (err) {
+      console.warn(`[Extensions] Error loading extension at ${extDir}:`, err.message);
+    }
+  }
+}
+
+// GET /api/extensions - Return loaded client extension metadata
+app.get('/api/extensions', (req, res) => {
+  const list = Array.from(loadedExtensions.values()).map(ext => ({
+    id: ext.id,
+    name: ext.name,
+    version: ext.version,
+    hasClient: Boolean(ext.clientEntryPath)
+  }));
+  res.json(list);
+});
+
+// GET /api/ext/:extId/client.js - Serve validated clientEntry file
+app.get('/api/ext/:extId/client.js', (req, res) => {
+  const extId = req.params.extId;
+  if (!extId || typeof extId !== 'string' || !/^[a-z0-9-]+$/.test(extId) || path.basename(extId) !== extId) {
+    return res.status(400).json({ error: 'Invalid extension ID' });
+  }
+
+  const ext = loadedExtensions.get(extId);
+  if (!ext || !ext.clientEntryPath) {
+    return res.status(404).json({ error: 'Extension client script not found' });
+  }
+
+  try {
+    const realClient = fs.realpathSync(ext.clientEntryPath);
+    if (!isPathInside(realClient, ext.extDir) || !fs.statSync(realClient).isFile()) {
+      return res.status(404).json({ error: 'Extension client script not accessible' });
+    }
+
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'no-store');
+    res.sendFile(realClient);
+  } catch (err) {
+    return res.status(404).json({ error: 'Extension client script not found' });
+  }
+});
+
+// Run extension discovery hook during server initialization
+try {
+  loadExtensions();
+} catch (err) {
+  console.warn('[Extensions] Initial extension discovery warning:', err.message);
 }
 
 /**
@@ -1857,5 +2139,12 @@ module.exports = {
   getRegisteredDeckFolders,
   isPathAllowedInRegisteredDecks,
   computeFileHash,
-  hashToPathMap
+  hashToPathMap,
+  loadExtensions,
+  loadedExtensions,
+  extensionAllowedFolders,
+  clearLoadedExtensions: () => {
+    loadedExtensions.clear();
+    extensionAllowedFolders.clear();
+  }
 };
