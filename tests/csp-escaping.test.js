@@ -5,7 +5,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 const http = require('node:http');
 
-const appJsCode = fs.readFileSync(path.join(__dirname, '../public/app.js'), 'utf8');
+const { loadFrontendCode } = require('./helpers/load-frontend.js');
+const appJsCode = loadFrontendCode();
 const indexHtml = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
 
 function setupTestEnvironment() {

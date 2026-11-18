@@ -3,7 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const appJsCode = fs.readFileSync(path.join(__dirname, '../public/app.js'), 'utf8');
+const { loadFrontendCode } = require('./helpers/load-frontend.js');
+const appJsCode = loadFrontendCode();
 const indexHtmlCode = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
 const styleCssCode = fs.readFileSync(path.join(__dirname, '../public/style.css'), 'utf8');
 

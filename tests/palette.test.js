@@ -567,7 +567,8 @@ test('Value Map: index.html and app.js contract integration', () => {
   assert.ok(indexHtml.includes('id="value-map-overlay-canvas"'), 'Must have value-map-overlay-canvas in index.html');
 
   // Verify app.js hooks PiPCanvasStreamer and SketchOverlay
-  const appJs = fs.readFileSync(appJsPath, 'utf8');
+  const { loadFrontendCode } = require('./helpers/load-frontend.js');
+  const appJs = loadFrontendCode();
   assert.ok(appJs.includes('ColorPaletteManager.applyValueMapToContext'), 'PiPCanvasStreamer in app.js must call ColorPaletteManager.applyValueMapToContext');
   assert.ok(appJs.includes('ColorPaletteManager.onSketchChanged'), 'SketchOverlay in app.js must notify ColorPaletteManager.onSketchChanged');
 });

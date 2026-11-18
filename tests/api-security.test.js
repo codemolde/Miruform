@@ -419,7 +419,8 @@ test('API Security Middleware & State IPC Tests', async (t) => {
       setAlwaysOnTopState: function(val) { this.isAlwaysOnTop = val; }
     };
 
-    const appJs = fs.readFileSync(path.join(__dirname, '../public/app.js'), 'utf8');
+    const { loadFrontendCode } = require('./helpers/load-frontend.js');
+    const appJs = loadFrontendCode();
     const enterMatch = appJs.match(/async enterElectronFloat\(\) \{[\s\S]*?\n  \},/);
     const ghostMatch = appJs.match(/async toggleGhostMode\(targetState\) \{[\s\S]*?\n  \},/);
     const aotMatch = appJs.match(/async toggleAlwaysOnTop\(targetState\) \{[\s\S]*?\n  \},/);

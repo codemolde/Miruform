@@ -5,7 +5,8 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const vm = require('node:vm');
 
-const appJsCode = fs.readFileSync(path.join(__dirname, '../public/app.js'), 'utf8');
+const { loadFrontendCode } = require('./helpers/load-frontend.js');
+const appJsCode = loadFrontendCode();
 
 // ============================================================================
 // CHILD PROCESS WORKER CODE (Executed when CHILD_TZ_WORKER is set in spawn env)

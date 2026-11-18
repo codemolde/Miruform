@@ -126,7 +126,8 @@ function setupMockBrowser() {
 
 test('Frontend Storage & Backup Safety', async (t) => {
   // Read and evaluate Storage and related logic in simulated environment
-  const appJsCode = fs.readFileSync(path.join(__dirname, '../public/app.js'), 'utf8');
+  const { loadFrontendCode } = require('./helpers/load-frontend.js');
+  const appJsCode = loadFrontendCode();
 
   await t.test('1. Mock failed GET -> no write occurs and blocking banner is shown (MOCKED)', async () => {
     const { mockDocument, mockWindow, mockLocalStorage, elements } = setupMockBrowser();
