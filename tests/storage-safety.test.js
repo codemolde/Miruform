@@ -128,6 +128,7 @@ test('Frontend Storage & Backup Safety', async (t) => {
   // Read and evaluate Storage and related logic in simulated environment
   const { loadFrontendCode } = require('./helpers/load-frontend.js');
   const appJsCode = loadFrontendCode();
+  const storageJsCode = fs.readFileSync(path.join(__dirname, '../public/js/core/storage.js'), 'utf8');
 
   await t.test('1. Mock failed GET -> no write occurs and blocking banner is shown (MOCKED)', async () => {
     const { mockDocument, mockWindow, mockLocalStorage, elements } = setupMockBrowser();
@@ -167,7 +168,7 @@ test('Frontend Storage & Backup Safety', async (t) => {
     };
 
     // Extract Storage object definition from app.js
-    const storageCodeMatch = appJsCode.match(/const Storage = \{[\s\S]*?\n\};\n\n\/\/ ===/);
+    const storageCodeMatch = storageJsCode.match(/const Storage = \{[\s\S]*?\n\};\n\n\/\/ ===/);
     assert.ok(storageCodeMatch, 'Found Storage object definition');
 
     const fn = new Function('window', 'document', 'localStorage', 'fetch', 'console', 'setTimeout', 'clearTimeout', `
@@ -221,7 +222,7 @@ test('Frontend Storage & Backup Safety', async (t) => {
       };
     };
 
-    const storageCodeMatch = appJsCode.match(/const Storage = \{[\s\S]*?\n\};\n\n\/\/ ===/);
+    const storageCodeMatch = storageJsCode.match(/const Storage = \{[\s\S]*?\n\};\n\n\/\/ ===/);
     const fn = new Function('window', 'document', 'localStorage', 'fetch', 'console', 'setTimeout', 'clearTimeout', `
       ${storageCodeMatch[0]}
       return Storage;
@@ -286,7 +287,7 @@ test('Frontend Storage & Backup Safety', async (t) => {
       return { ok: true, json: async () => ({}) };
     };
 
-    const storageCodeMatch = appJsCode.match(/const Storage = \{[\s\S]*?\n\};\n\n\/\/ ===/);
+    const storageCodeMatch = storageJsCode.match(/const Storage = \{[\s\S]*?\n\};\n\n\/\/ ===/);
     const fn = new Function('window', 'document', 'localStorage', 'fetch', 'console', 'setTimeout', 'clearTimeout', `
       ${storageCodeMatch[0]}
       return Storage;

@@ -373,7 +373,6 @@ const Storage = {
   }
 };
 
-
 // ==================== WALLPAPER MANAGER (IndexedDB) ====================
 // Uses IndexedDB for large custom wallpaper images so users can set 4K/high-res images without 5MB localStorage limits
 const WallpaperManager = {
