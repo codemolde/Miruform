@@ -24,6 +24,7 @@ release/
 pro/
 /extensions/
 extensions/
+!public/js/extensions/
 
 # Runtime and local user data
 userdata/
