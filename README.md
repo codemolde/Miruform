@@ -85,6 +85,16 @@ Each extension provides a `manifest.json` declaring its entries. The host loads 
 
 ## License & Legal
 
-- **Software License**: Source-available for personal use. See the [LICENSE](LICENSE) file for terms and conditions. Commercial redistribution, resale, and commercial forks are prohibited.
+Art Practice Reference Studio is **source-available** software licensed under the [PolyForm Shield License 1.0.0](LICENSE).
+
+### Plain-English Summary (Not Part of the License)
+
+> [!NOTE]
+> **Plain-English Summary (Not Part of the License)**:
+> - **Permitted**: You are welcome to view, download, compile, modify, and run this software for your personal reference, educational studies, and artistic work. You can also build private extensions and customize it for your workflow.
+> - **Noncompete Restriction**: You may not use this software, or works based upon it, to build or distribute a competing product or service (such as commercial redistributions, paid forks, or hosted cloud services competing with the software or licensor).
+>
+> *For the complete, legally binding terms, see the official license text in [LICENSE](LICENSE).*
+
 - **Third-Party Attributions**: See [NOTICE](NOTICE) for third-party licenses and credits.
 - **Contributing**: Please review [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and our Contributor License Agreement.

@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Local art practice reference app with spaced repetition",
   "main": "electron-main.js",
-  "author": "Daksh Beniwal",
-  "license": "SEE LICENSE IN LICENSE",
+  "author": "codemolde",
+  "license": "LicenseRef-PolyForm-Shield-1.0.0",
   "scripts": {
     "start": "node server.js",
     "test": "node --test --test-concurrency=1 tests/*.test.js",
@@ -20,7 +20,7 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.daksh.artpractice",
+    "appId": "com.codemolde.artpractice",
     "productName": "Art Practice Studio",
     "files": [
       "server.js",

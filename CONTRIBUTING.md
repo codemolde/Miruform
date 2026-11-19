@@ -47,9 +47,9 @@ Thank you for your interest in improving Art Practice Reference Studio! We welco
 
 By submitting a pull request, patch, code snippet, or documentation to this repository, you agree to the following terms:
 
-1. **Grant of Rights**: You grant Daksh Beniwal ("Maintainer") a perpetual, worldwide, non-exclusive, royalty-free, irrevocable copyright license to reproduce, prepare derivative works of, publicly display, sublicense, and distribute your contributions and such derivative works.
+1. **Grant of Rights**: You grant codemolde ("Maintainer") a perpetual, worldwide, non-exclusive, royalty-free, irrevocable copyright license to reproduce, prepare derivative works of, publicly display, sublicense, and distribute your contributions and such derivative works.
 2. **Commercial & Dual-Distribution Authorization**: You acknowledge and agree that your contributions may be included in both:
-   - The free, source-available core software distributed in this repository.
+   - The source-available software distributed in this repository under the PolyForm Shield License 1.0.0.
    - Commercial Pro editions, packages, or proprietary extension distributions maintained separately.
 3. **Original Author Warranty**: You represent that each of your contributions is your original creation, and that you have the full legal right to grant the rights described above without violating any third-party copyright, patent, trademark, or license obligations.
 4. **No Employment Relationship**: Submitting a contribution does not create any employment, agency, or partnership relationship with the Maintainer.
