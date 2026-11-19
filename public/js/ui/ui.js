@@ -316,6 +316,38 @@ const UI = {
       });
     }
 
+    // Board Sort Dropdown
+    const boardSortSelect = document.getElementById('board-sort-select');
+    if (boardSortSelect) {
+      boardSortSelect.addEventListener('change', (e) => {
+        this.setBoardSortOrder(e.target.value);
+      });
+    }
+
+    // Board Rescan / Refresh Button
+    const btnBoardRefresh = document.getElementById('btn-board-refresh');
+    if (btnBoardRefresh) {
+      btnBoardRefresh.addEventListener('click', () => {
+        this.refreshCurrentDeck();
+      });
+    }
+
+    // Deck Detail Header Rescan / Refresh Button
+    const btnDetailRefresh = document.getElementById('btn-detail-refresh');
+    if (btnDetailRefresh) {
+      btnDetailRefresh.addEventListener('click', () => {
+        this.refreshCurrentDeck();
+      });
+    }
+
+    // Relocate Folder Button on Missing Folder Banner
+    const btnRelocateFolder = document.getElementById('btn-relocate-folder');
+    if (btnRelocateFolder) {
+      btnRelocateFolder.addEventListener('click', () => {
+        this.openDeckModal(this.currentDeckId);
+      });
+    }
+
     // Board Grid Size (Small, Medium, Large)
     document.querySelectorAll('.btn-board-size').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -339,7 +371,7 @@ const UI = {
         if (!cardEl) return;
         const refId = cardEl.dataset.id;
         const refPath = cardEl.dataset.path;
-        const ref = (this.boardState.filteredReferences || this.cachedImages || []).find(r => r.id === refId || (refPath && r.path === refPath))
+        const ref = (this.boardState.filteredReferences || this.cachedImages || []).find(r => (refPath && r.path && r.path === refPath) || (refId && r.id === refId))
           || { id: refId, path: refPath, name: cardEl.querySelector('.board-ref-title')?.textContent || '' };
         this.selectBoardReference(ref, cardEl);
         this.openBoardStage(ref);
@@ -350,7 +382,7 @@ const UI = {
         if (!cardEl) return;
         const refId = cardEl.dataset.id;
         const refPath = cardEl.dataset.path;
-        const ref = (this.boardState.filteredReferences || this.cachedImages || []).find(r => r.id === refId || (refPath && r.path === refPath))
+        const ref = (this.boardState.filteredReferences || this.cachedImages || []).find(r => (refPath && r.path && r.path === refPath) || (refId && r.id === refId))
           || { id: refId, path: refPath, name: cardEl.querySelector('.board-ref-title')?.textContent || '' };
         this.selectBoardReference(ref, cardEl);
         this.openBoardStage(ref);
@@ -625,6 +657,7 @@ const UI = {
       btnElectronUnfloat.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (this.isGhostMode) return;
         this.exitElectronFloat();
       });
     }
@@ -633,6 +666,7 @@ const UI = {
       btnElectronGhost.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (this.isGhostMode) return;
         this.toggleGhostMode();
       });
     }
@@ -645,10 +679,7 @@ const UI = {
       });
     }
     const ghostInteractiveElements = [
-      document.getElementById('ghost-mode-banner'),
-      document.getElementById('electron-float-bar'),
-      btnExitGhost,
-      btnElectronGhost
+      btnExitGhost
     ].filter(Boolean);
     ghostInteractiveElements.forEach(el => {
       el.addEventListener('mouseenter', () => {
@@ -2107,6 +2138,9 @@ const UI = {
   },
 
   async exitElectronFloat() {
+    if (this.isGhostMode) {
+      await this.toggleGhostMode(false);
+    }
     if (window.electronAPI && typeof window.electronAPI.toggleFloatMode === 'function') {
       try {
         const res = await window.electronAPI.toggleFloatMode(false);
@@ -3486,7 +3520,7 @@ const UI = {
           <div class="board-ref-thumb-wrap">
             <img class="board-ref-thumb" src="${this._esc(imgUrl)}" alt="${this._esc(img.name || '')}" loading="lazy" decoding="async" draggable="false">
             <div class="board-card-fallback hidden" aria-hidden="true">
-              <span class="fallback-icon">⚠️</span>
+              <span class="fallback-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
               <span class="fallback-text">Unavailable</span>
             </div>
             ${cropBadge}

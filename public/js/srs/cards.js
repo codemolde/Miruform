@@ -827,8 +827,26 @@ const CardManager = {
     images.forEach(img => {
       if (img.path && img.id && img.path !== img.id) {
         // Case 1: Card was stored under absolute file path -> migrate to content hash ID
-        if (deckCards[img.path]) {
-          const oldCard = deckCards[img.path];
+        let oldCard = deckCards[img.path];
+        let oldKey = img.path;
+
+        if (!oldCard && !deckCards[img.id]) {
+          // If a folder or subfolder was renamed or moved, find legacy card by matching file basename
+          const imgBase = (img.path || '').split(/[/\\]/).pop();
+          if (imgBase) {
+            const candidateKey = Object.keys(deckCards).find(k => {
+              if (k === img.id || k.startsWith('ch_')) return false;
+              const kBase = k.split(/[/\\]/).pop();
+              return kBase === imgBase;
+            });
+            if (candidateKey) {
+              oldCard = deckCards[candidateKey];
+              oldKey = candidateKey;
+            }
+          }
+        }
+
+        if (oldCard) {
           if (!deckCards[img.id]) {
             deckCards[img.id] = {
               ...oldCard,
@@ -853,11 +871,14 @@ const CardManager = {
               target.reviewCount = Math.max(target.reviewCount || 0, oldCard.reviewCount || 0);
             }
           }
-          delete deckCards[img.path];
+          delete deckCards[oldKey];
           migratedCount++;
         } else if (deckCards[img.id] && img.name && deckCards[img.id].imageName !== img.name) {
           // File was renamed or moved: keep review history, update relative display name!
           deckCards[img.id].imageName = img.name;
+          if (img.path) {
+            deckCards[img.id].previousPath = img.path;
+          }
           migratedCount++;
         }
       }

@@ -586,6 +586,9 @@ function toggleFloatMode(win, targetState) {
 
     state.floating = true;
   } else {
+    if (state.ghost) {
+      toggleGhostMode(targetWin, false);
+    }
     // If independent always-on-top was explicitly enabled, preserve always-on-top stacking
     if (state.alwaysOnTop) {
       if (process.platform === 'darwin') {

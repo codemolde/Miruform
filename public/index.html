@@ -7,6 +7,8 @@
   <title>Art Practice Reference — Artist Study & SRS Drill</title>
   <meta name="description"
     content="Distraction-free art practice and spaced repetition reference tool for artists, gesture sketchers, and figure studies.">
+  <meta name="keywords"
+    content="art practice, reference viewer, gesture drawing, spaced repetition, SM-2, figure drawing, notan, local-first, artist tools, memory drill">
 
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'">
@@ -302,6 +304,12 @@
           <p id="deck-detail-path" class="deck-path" title="Folder path"></p>
         </div>
         <div class="deck-header-actions">
+          <button id="btn-detail-refresh" class="btn btn-ghost" title="Rescan folder on disk">
+            <span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+              </svg></span> Refresh
+          </button>
           <button id="btn-detail-sound" class="btn btn-ghost" title="Tactile Sound FX (Click to mute/unmute)">
             <span class="btn-icon" id="detail-sound-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -321,6 +329,17 @@
           <button id="btn-delete-deck" class="btn btn-danger-ghost">Delete</button>
         </div>
       </header>
+ 
+      <!-- Folder Missing Banner (Appears if folder was moved or renamed on disk) -->
+      <div id="deck-folder-missing-banner" class="deck-folder-missing-banner hidden">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span class="banner-text" id="deck-missing-folder-text">Folder not found on disk. Did you rename or move this folder?</span>
+        <button type="button" id="btn-relocate-folder" class="btn btn-small btn-primary">Relocate Folder</button>
+      </div>
 
       <!-- Deck Mode Segmented Tabs: Study (SRS) vs. Reference Board -->
       <div class="deck-mode-tabs-bar" role="tablist" aria-label="Deck Modes">
@@ -653,6 +672,24 @@
             </div>
           </div>
           <div class="board-filter-right">
+            <div class="board-sort-group">
+              <label for="board-sort-select" class="board-sort-label" title="Sort references">Sort:</label>
+              <select id="board-sort-select" class="board-sort-select" aria-label="Sort references">
+                <option value="default">Folder Order</option>
+                <option value="name-asc">Name (A–Z)</option>
+                <option value="name-desc">Name (Z–A)</option>
+                <option value="due">Due Date First</option>
+                <option value="reviews">Most Reviewed</option>
+                <option value="hardest">Hardest First</option>
+                <option value="easiest">Easiest First</option>
+              </select>
+            </div>
+            <button type="button" id="btn-board-refresh" class="btn btn-ghost btn-small btn-board-refresh" title="Rescan folder for added, moved, or renamed references" aria-label="Rescan folder">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+              </svg>
+              <span>Refresh</span>
+            </button>
             <span id="board-ref-count" class="board-ref-count-badge">Showing 0 of 0 references</span>
             <div class="board-grid-size-group" role="group" aria-label="Thumbnail size">
               <button type="button" class="btn-board-size" data-size="small" title="Small thumbnails (Compact)" aria-label="Small thumbnails">
@@ -797,10 +834,8 @@
           </div>
         </div>
 
-        <!-- Ghost Mode Hover-Restore HUD Strip (Hover or press Cmd+Shift+G to restore normal interaction) -->
-        <div id="ghost-mode-banner" class="ghost-mode-banner hidden"
-          title="Ghost Mode Active (Click-through enabled). Hover here or press Cmd+Shift+G to restore normal clicks.">
-          <span class="ghost-badge">👻 Ghost Mode Active</span>
+        <!-- Ghost Mode Hover-Restore HUD Strip (Press Cmd+Shift+G or click Restore Clicks to restore normal interaction) -->
+        <div id="ghost-mode-banner" class="ghost-mode-banner hidden">
           <span class="ghost-badge"><svg class="ghost-badge-icon" width="13" height="13" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M9 10h.01" />

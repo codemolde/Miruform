@@ -199,7 +199,7 @@ const FlashRecallManager = {
           const escChallenge = (typeof UI !== 'undefined' && UI._esc) ? UI._esc(challenge) : challenge;
           masteryContainer.innerHTML = `
             <div class="drill-mastery-badge">
-              <span class="mastery-sparkle" aria-hidden="true">⚡</span>
+              <span class="mastery-sparkle" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
               <span>${escChallenge}</span>
             </div>
           `;

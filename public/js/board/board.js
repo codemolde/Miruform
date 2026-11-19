@@ -13,6 +13,7 @@ const BoardManager = {
   slideshowPaused: false,
   gridScrollTop: 0,
   gridSize: 'medium',
+  sortOrder: 'default',
 
   init(deckId, images) {
     this.activeDeckId = deckId;
@@ -26,6 +27,7 @@ const BoardManager = {
     this.slideshowIntervalSec = 0;
     this.slideshowPaused = false;
     this.gridScrollTop = 0;
+    this.sortOrder = 'default';
     this.stopSlideshow();
   },
 
@@ -35,7 +37,7 @@ const BoardManager = {
       ? this.filteredReferences
       : (this.allReferences || []);
     if (ref && list.length > 0) {
-      const idx = list.findIndex(r => r.id === ref.id || (r.path && r.path === ref.path));
+      const idx = list.findIndex(r => (ref.path && r.path && r.path === ref.path) || (ref.id && r.id && r.id === ref.id));
       this.currentIndex = idx >= 0 ? idx : 0;
     } else {
       this.currentIndex = -1;
@@ -144,6 +146,14 @@ const BoardManager = {
     return this.gridSize;
   },
 
+  setSortOrder(order) {
+    const allowed = ['default', 'name-asc', 'name-desc', 'due', 'reviews', 'hardest', 'easiest'];
+    if (allowed.includes(order)) {
+      this.sortOrder = order;
+    }
+    return this.sortOrder;
+  },
+
   reset() {
     this.activeDeckId = null;
     this.allReferences = [];
@@ -154,6 +164,7 @@ const BoardManager = {
     this.currentIndex = -1;
     this.isStageOpen = false;
     this.gridScrollTop = 0;
+    this.sortOrder = 'default';
     this.stopSlideshow();
   }
 };

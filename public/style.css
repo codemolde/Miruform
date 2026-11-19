@@ -5345,12 +5345,27 @@ body.electron-float-active .electron-float-bar {
   border-radius: 4px;
   font-family: var(--font-mono, monospace);
   font-size: 11px;
-  pointer-events: auto !important;
+  white-space: nowrap;
+  pointer-events: none !important;
+  user-select: none;
+  -webkit-user-select: none;
   -webkit-app-region: no-drag;
+}
+
+/* Ghost Mode Interaction: In Ghost Mode, disallow pointer events on the entire canvas/window except for the Restore Clicks button */
+body.ghost-mode-active,
+body.ghost-mode-active * {
+  pointer-events: none !important;
 }
 
 body.ghost-mode-active #ghost-mode-banner {
   display: flex !important;
+  pointer-events: none !important;
+}
+
+body.ghost-mode-active #btn-exit-ghost-mode {
+  pointer-events: auto !important;
+  cursor: pointer !important;
 }
 
 .ghost-badge {
@@ -5359,6 +5374,8 @@ body.ghost-mode-active #ghost-mode-banner {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .ghost-badge-icon {
@@ -5386,6 +5403,7 @@ body.ghost-mode-active #ghost-mode-banner {
   font-weight: 600;
   cursor: pointer;
   line-height: 1.2;
+  pointer-events: auto !important;
 }
 
 .btn-ghost-exit:hover {
@@ -8471,6 +8489,98 @@ body.is-electron.is-mac .session-header {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+/* Reference Board Sort Dropdown */
+.board-sort-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #141414;
+  border: 1px solid #2e2e2e;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+}
+
+.board-sort-label {
+  color: #888;
+  font-size: 11px;
+  user-select: none;
+}
+
+.board-sort-select {
+  background: transparent;
+  color: #ddd;
+  border: none;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+  padding: 1px 2px;
+}
+
+.board-sort-select:focus-visible {
+  outline: 1px solid var(--accent, #d97706);
+  border-radius: 2px;
+}
+
+.board-sort-select option {
+  background: #202020;
+  color: #eee;
+}
+
+/* Board Refresh Button */
+.btn-board-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.btn-board-refresh svg {
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+.btn-board-refresh.spinning svg {
+  animation: board-spin 0.7s linear infinite;
+}
+
+@keyframes board-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Deck Detail Folder Missing Relocate Banner */
+.deck-folder-missing-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(220, 38, 38, 0.12);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  color: #fca5a5;
+  padding: 10px 16px;
+  border-radius: 6px;
+  margin: 12px 24px 0 24px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.deck-folder-missing-banner.hidden {
+  display: none !important;
+}
+
+.deck-folder-missing-banner svg {
+  flex-shrink: 0;
+  color: #ef4444;
+}
+
+.deck-folder-missing-banner .banner-text {
+  flex: 1;
+  line-height: 1.4;
+  color: #fca5a5;
 }
 
 /* Board Grid Size Toggle Group */

@@ -1,7 +1,22 @@
 {
   "name": "art-practice-reference",
   "version": "1.0.0",
-  "description": "Local art practice reference app with spaced repetition",
+  "description": "Local-first art practice reference studio, gesture trainer, and spaced repetition viewer for artists and animators",
+  "keywords": [
+    "art",
+    "drawing",
+    "art-practice",
+    "gesture-drawing",
+    "figure-drawing",
+    "reference-viewer",
+    "spaced-repetition",
+    "sm-2",
+    "anki",
+    "artist-tools",
+    "notan",
+    "electron",
+    "local-first"
+  ],
   "main": "electron-main.js",
   "author": "codemolde",
   "license": "LicenseRef-PolyForm-Shield-1.0.0",

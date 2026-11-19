@@ -319,7 +319,7 @@ const Storage = {
     }
     banner.innerHTML = `
       <div style="background:#222;border:1px solid #444;border-radius:10px;padding:32px 36px;max-width:480px;box-shadow:0 16px 40px rgba(0,0,0,0.6);">
-        <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
+        <div style="display:flex;justify-content:center;margin-bottom:12px;color:var(--accent,#d97706);"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
         <h2 style="font-size:18px;margin:0 0 10px 0;font-weight:600;">Could not read your saved progress</h2>
         <p style="color:#aaa;font-size:14px;margin:0 0 24px 0;line-height:1.5;">${this._esc(message) || 'The server could not read userdata/srs_state.json.'}</p>
         <button id="btn-storage-retry" class="btn btn-primary" style="padding:10px 28px;font-size:14px;cursor:pointer;border-radius:6px;">Retry</button>
@@ -359,7 +359,7 @@ const Storage = {
       });
       document.body.appendChild(chip);
     }
-    chip.innerHTML = `<span>⚠️ ${this._esc(customText) || 'Sync failing (click to retry)'}</span>`;
+    chip.innerHTML = `<span><svg style="vertical-align:-2px;margin-right:6px;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>${this._esc(customText) || 'Sync failing (click to retry)'}</span>`;
     chip.style.display = 'flex';
   },
 
