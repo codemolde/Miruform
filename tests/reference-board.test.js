@@ -964,6 +964,144 @@ test('Case 31: Small, Medium, Large grid size toggles update DOM class and persi
   assert.equal(BoardManager.gridSize, 'medium');
 });
 
+test('Case 32: Reference Board Sort By options (Name A-Z, Name Z-A, Due, Reviews, Hardest, Easiest)', () => {
+  const ctx = setupTestEnvironment();
+  const UI = ctx.UI;
+  const CardManager = ctx.CardManager;
+
+  const deckId = 'deck_sort_test';
+  UI.currentDeckId = deckId;
+
+  const images = [
+    { id: 'img_c', name: 'Charlie.jpg', path: '/deck/Charlie.jpg' },
+    { id: 'img_a', name: 'Alpha.jpg', path: '/deck/Alpha.jpg' },
+    { id: 'img_b', name: 'Bravo.jpg', path: '/deck/Bravo.jpg' }
+  ];
+
+  UI.cachedImages = images;
+  UI.boardState.allReferences = images;
+  UI.boardState.filteredReferences = [...images];
+
+  // Set up mock card stats in CardManager
+  CardManager.cards[deckId] = {
+    img_a: { imageId: 'img_a', dueDate: '2026-12-01', reviewCount: 2, difficulty: 'easy', easeFactor: 2.8 },
+    img_b: { imageId: 'img_b', dueDate: '2026-11-20', reviewCount: 10, difficulty: 'again', easeFactor: 1.8 },
+    img_c: { imageId: 'img_c', dueDate: '2026-11-25', reviewCount: 5, difficulty: 'hard', easeFactor: 2.1 }
+  };
+
+  // 1. Sort Name A-Z
+  UI.setBoardSortOrder('name-asc');
+  let names = UI.boardState.filteredReferences.map(r => r.name);
+  assert.deepStrictEqual(names, ['Alpha.jpg', 'Bravo.jpg', 'Charlie.jpg']);
+
+  // 2. Sort Name Z-A
+  UI.setBoardSortOrder('name-desc');
+  names = UI.boardState.filteredReferences.map(r => r.name);
+  assert.deepStrictEqual(names, ['Charlie.jpg', 'Bravo.jpg', 'Alpha.jpg']);
+
+  // 3. Sort Due Date First
+  UI.setBoardSortOrder('due');
+  names = UI.boardState.filteredReferences.map(r => r.name);
+  assert.deepStrictEqual(names, ['Bravo.jpg', 'Charlie.jpg', 'Alpha.jpg']);
+
+  // 4. Sort Most Reviewed
+  UI.setBoardSortOrder('reviews');
+  names = UI.boardState.filteredReferences.map(r => r.name);
+  assert.deepStrictEqual(names, ['Bravo.jpg', 'Charlie.jpg', 'Alpha.jpg']);
+
+  // 5. Sort Hardest First
+  UI.setBoardSortOrder('hardest');
+  names = UI.boardState.filteredReferences.map(r => r.name);
+  assert.deepStrictEqual(names, ['Bravo.jpg', 'Charlie.jpg', 'Alpha.jpg']);
+
+  // 6. Sort Easiest First
+  UI.setBoardSortOrder('easiest');
+  names = UI.boardState.filteredReferences.map(r => r.name);
+  assert.deepStrictEqual(names, ['Alpha.jpg', 'Charlie.jpg', 'Bravo.jpg']);
+});
+
+test('Case 33: Prevention of duplicate reference teleportation when clicking/navigating references with identical hashes in different paths', () => {
+  const ctx = setupTestEnvironment();
+  const UI = ctx.UI;
+  const BoardManager = ctx.BoardManager;
+
+  const deckId = 'deck_teleport_test';
+  UI.currentDeckId = deckId;
+
+  // Simulate two identical duplicate files in different subfolders sharing the exact same hash
+  const ref700 = { id: 'ch_duplicate_hash', path: '/deck/subfolder_1/pose.jpg', name: 'subfolder_1/pose.jpg' };
+  const ref2318 = { id: 'ch_duplicate_hash', path: '/deck/subfolder_2/pose.jpg', name: 'subfolder_2/pose.jpg' };
+
+  const images = [ref700, ref2318];
+  UI.cachedImages = images;
+  UI.cachedImagesDeckId = deckId;
+  UI.boardState.allReferences = images;
+  UI.boardState.filteredReferences = [...images];
+
+  // 1. Select the second reference (ref2318)
+  UI.selectBoardReference(ref2318);
+
+  // Verification: Selected reference must strictly match ref2318 by path, NOT ref700!
+  assert.strictEqual(UI.boardState.selectedRef.path, '/deck/subfolder_2/pose.jpg');
+  assert.strictEqual(UI.boardState.currentIndex, 1, 'Current index must be 1, not 0 (no teleportation)');
+
+  // 2. Render cards in DOM and verify HTML classes
+  UI.renderBoardGrid();
+  const grid = ctx.document.getElementById('board-gallery-grid');
+
+  assert.ok(
+    grid.innerHTML.includes('class="board-ref-card selected" data-id="ch_duplicate_hash" data-path="/deck/subfolder_2/pose.jpg"'),
+    'Card 2318 must be visually selected'
+  );
+  assert.ok(
+    grid.innerHTML.includes('class="board-ref-card" data-id="ch_duplicate_hash" data-path="/deck/subfolder_1/pose.jpg"'),
+    'Card 700 must not be selected'
+  );
+
+  // 3. Verify BoardManager.selectReference resolves by path first
+  BoardManager.selectReference(ref2318);
+  assert.strictEqual(BoardManager.currentIndex, 1, 'BoardManager must select index 1 without jumping to 0');
+
+  // 4. Verify applyBoardFilters preserves selection by path
+  UI.applyBoardFilters();
+  assert.strictEqual(UI.boardState.currentIndex, 1, 'applyBoardFilters must maintain index 1 for ref2318');
+});
+
+test('Case 34: Folder rename / move migration in CardManager and deck rescan', () => {
+  const ctx = setupTestEnvironment();
+  const CardManager = ctx.CardManager;
+
+  const deckId = 'deck_rename_test';
+
+  // Suppose legacy card was stored under old folder path:
+  CardManager.cards[deckId] = {
+    '/deck/old_subfolder/figure.jpg': {
+      imageName: 'old_subfolder/figure.jpg',
+      reviewCount: 7,
+      difficulty: 'hard',
+      tags: ['gesture', 'anatomy']
+    }
+  };
+
+  // User renames subfolder on disk to 'new_subfolder'. Scanner finds file with new path and hash:
+  const scannedImages = [
+    { id: 'ch_figure_hash_123', name: 'new_subfolder/figure.jpg', path: '/deck/new_subfolder/figure.jpg' }
+  ];
+
+  // Run migration
+  const migrated = CardManager.migrateLegacyPathCards(deckId, scannedImages);
+  assert.strictEqual(migrated, 1);
+
+  // Review history, stats, and tags must follow the file to the new hash ID:
+  const card = CardManager.cards[deckId]['ch_figure_hash_123'];
+  assert.ok(card, 'Card must be keyed by content hash ID');
+  assert.strictEqual(card.reviewCount, 7);
+  assert.strictEqual(card.difficulty, 'hard');
+  assert.deepStrictEqual(card.tags, ['gesture', 'anatomy']);
+  assert.strictEqual(card.imageName, 'new_subfolder/figure.jpg');
+  assert.strictEqual(CardManager.cards[deckId]['/deck/old_subfolder/figure.jpg'], undefined, 'Old path key must be cleaned up');
+});
+
 // -----------------------------------------------------------------------------
 // Security Checks: CSP, HTML Event Handlers & Escaping
 // -----------------------------------------------------------------------------

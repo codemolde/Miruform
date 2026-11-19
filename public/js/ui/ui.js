@@ -371,7 +371,7 @@ const UI = {
         if (!cardEl) return;
         const refId = cardEl.dataset.id;
         const refPath = cardEl.dataset.path;
-        const ref = (this.boardState.filteredReferences || this.cachedImages || []).find(r => (refPath && r.path && r.path === refPath) || (refId && r.id === refId))
+        const ref = (this.boardState.filteredReferences || this.cachedImages || []).find(r => refPath ? r.path === refPath : r.id === refId)
           || { id: refId, path: refPath, name: cardEl.querySelector('.board-ref-title')?.textContent || '' };
         this.selectBoardReference(ref, cardEl);
         this.openBoardStage(ref);
@@ -382,7 +382,7 @@ const UI = {
         if (!cardEl) return;
         const refId = cardEl.dataset.id;
         const refPath = cardEl.dataset.path;
-        const ref = (this.boardState.filteredReferences || this.cachedImages || []).find(r => (refPath && r.path && r.path === refPath) || (refId && r.id === refId))
+        const ref = (this.boardState.filteredReferences || this.cachedImages || []).find(r => refPath ? r.path === refPath : r.id === refId)
           || { id: refId, path: refPath, name: cardEl.querySelector('.board-ref-title')?.textContent || '' };
         this.selectBoardReference(ref, cardEl);
         this.openBoardStage(ref);
@@ -3157,17 +3157,19 @@ const UI = {
       if (searchInput) searchInput.value = '';
     }
 
+    const missingBanner = document.getElementById('deck-folder-missing-banner');
+    const missingText = document.getElementById('deck-missing-folder-text');
+
     // Load folder images
     try {
       this.cachedImages = await SessionManager.loadImages(deck.folderPath);
       this.cachedImagesDeckId = deckId;
+      if (missingBanner) missingBanner.classList.add('hidden');
       if (this.boardState) {
         this.boardState.activeDeckId = deckId;
         this.boardState.allReferences = this.cachedImages || [];
-        if (!this.boardState.filteredReferences || this.boardState.filteredReferences.length === 0) {
-          this.boardState.filteredReferences = [...(this.cachedImages || [])];
-        }
       }
+      this.applyBoardFilters();
       // Automatically migrate legacy path cards to content-hash IDs
       CardManager.migrateLegacyPathCards(deckId, this.cachedImages);
     } catch (err) {
@@ -3177,6 +3179,12 @@ const UI = {
         this.boardState.activeDeckId = deckId;
         this.boardState.allReferences = [];
         this.boardState.filteredReferences = [];
+      }
+      if (missingBanner) {
+        if (missingText) {
+          missingText.textContent = `Folder not found: "${this.formatShortPath(deck.folderPath)}". Did you rename or move this folder?`;
+        }
+        missingBanner.classList.remove('hidden');
       }
       this.showToast(`Folder load issue: ${err.message}`, 'alert');
     }
@@ -3348,11 +3356,71 @@ const UI = {
       return true;
     });
 
+    // Reference Board Sorting
+    const sortOrder = (this.boardState && this.boardState.sortOrder) || 'default';
+    if (sortOrder !== 'default') {
+      filtered.sort((a, b) => {
+        const cardA = deckCards[a.id] || (a.path && deckCards[a.path]);
+        const cardB = deckCards[b.id] || (b.path && deckCards[b.path]);
+
+        if (sortOrder === 'name-asc') {
+          const nameA = (a.name || '').toLowerCase();
+          const nameB = (b.name || '').toLowerCase();
+          return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+        }
+        if (sortOrder === 'name-desc') {
+          const nameA = (a.name || '').toLowerCase();
+          const nameB = (b.name || '').toLowerCase();
+          return nameB.localeCompare(nameA, undefined, { numeric: true, sensitivity: 'base' });
+        }
+        if (sortOrder === 'due') {
+          const dueA = cardA && cardA.dueDate ? cardA.dueDate : '9999-99-99';
+          const dueB = cardB && cardB.dueDate ? cardB.dueDate : '9999-99-99';
+          if (dueA !== dueB) return dueA.localeCompare(dueB);
+          return (a.name || '').localeCompare(b.name || '', undefined, { numeric: true });
+        }
+        if (sortOrder === 'reviews') {
+          const revA = (cardA && cardA.reviewCount) || 0;
+          const revB = (cardB && cardB.reviewCount) || 0;
+          if (revB !== revA) return revB - revA;
+          return (a.name || '').localeCompare(b.name || '', undefined, { numeric: true });
+        }
+        if (sortOrder === 'hardest') {
+          const diffWeight = { again: 4, hard: 3, medium: 2, easy: 1 };
+          const weightA = cardA && cardA.difficulty ? (diffWeight[cardA.difficulty] || 0) : -1;
+          const weightB = cardB && cardB.difficulty ? (diffWeight[cardB.difficulty] || 0) : -1;
+          if (weightB !== weightA) return weightB - weightA;
+          const easeA = cardA && typeof cardA.easeFactor === 'number' ? cardA.easeFactor : 2.5;
+          const easeB = cardB && typeof cardB.easeFactor === 'number' ? cardB.easeFactor : 2.5;
+          if (easeA !== easeB) return easeA - easeB;
+          return (a.name || '').localeCompare(b.name || '', undefined, { numeric: true });
+        }
+        if (sortOrder === 'easiest') {
+          const diffWeight = { easy: 4, medium: 3, hard: 2, again: 1 };
+          const weightA = cardA && cardA.difficulty ? (diffWeight[cardA.difficulty] || 0) : -1;
+          const weightB = cardB && cardB.difficulty ? (diffWeight[cardB.difficulty] || 0) : -1;
+          if (weightB !== weightA) return weightB - weightA;
+          const easeA = cardA && typeof cardA.easeFactor === 'number' ? cardA.easeFactor : 2.5;
+          const easeB = cardB && typeof cardB.easeFactor === 'number' ? cardB.easeFactor : 2.5;
+          if (easeB !== easeA) return easeB - easeA;
+          return (a.name || '').localeCompare(b.name || '', undefined, { numeric: true });
+        }
+        return 0;
+      });
+    }
+
     this.boardState.filteredReferences = filtered;
 
-    // Requirement 4: Predictable selection behavior
+    // Requirement 4: Predictable selection behavior (match path before id to prevent duplicate teleportation)
     if (this.boardState.selectedRef) {
-      const foundIdx = filtered.findIndex(r => r.id === this.boardState.selectedRef.id || (r.path && r.path === this.boardState.selectedRef.path));
+      const sel = this.boardState.selectedRef;
+      let foundIdx = -1;
+      if (sel.path) {
+        foundIdx = filtered.findIndex(r => r.path === sel.path);
+      }
+      if (foundIdx === -1 && sel.id) {
+        foundIdx = filtered.findIndex(r => r.id === sel.id);
+      }
       if (foundIdx !== -1) {
         this.boardState.currentIndex = foundIdx;
       } else {
@@ -3501,7 +3569,9 @@ const UI = {
       const card = deckCards[img.id] || (img.path && deckCards[img.path]);
       const tags = (card && Array.isArray(card.tags)) ? card.tags : [];
       const hasCrop = Boolean(card && card.cropImage && card.cropImage.cropUrl);
-      const isSelected = Boolean(selectedRef && (selectedRef.id === img.id || (img.path && selectedRef.path === img.path)));
+      const isSelected = Boolean(selectedRef && (
+        selectedRef.path && img.path ? selectedRef.path === img.path : selectedRef.id === img.id
+      ));
 
       const imgUrl = (typeof SessionManager !== 'undefined' && SessionManager.getImageUrl)
         ? SessionManager.getImageUrl(img)
@@ -3568,6 +3638,85 @@ const UI = {
     });
   },
 
+  setBoardSortOrder(order) {
+    if (!['default', 'name-asc', 'name-desc', 'due', 'reviews', 'hardest', 'easiest'].includes(order)) {
+      order = 'default';
+    }
+    if (this.boardState) {
+      if (typeof this.boardState.setSortOrder === 'function') {
+        this.boardState.setSortOrder(order);
+      } else {
+        this.boardState.sortOrder = order;
+      }
+    }
+    const select = document.getElementById('board-sort-select');
+    if (select && select.value !== order) {
+      select.value = order;
+    }
+    this.applyBoardFilters();
+    this.renderBoardGrid();
+    this.updateBoardFilterStatus();
+  },
+
+  async refreshCurrentDeck() {
+    if (!this.currentDeckId) return;
+    const deck = DeckManager.getById(this.currentDeckId);
+    if (!deck || !deck.folderPath) return;
+
+    const btnBoardRefresh = document.getElementById('btn-board-refresh');
+    const btnDetailRefresh = document.getElementById('btn-detail-refresh');
+    if (btnBoardRefresh) btnBoardRefresh.classList.add('spinning');
+    if (btnDetailRefresh) btnDetailRefresh.classList.add('spinning');
+
+    if (this.deckMeta) {
+      delete this.deckMeta[deck.folderPath];
+    }
+    this.cachedImages = null;
+    this.cachedImagesDeckId = null;
+
+    const missingBanner = document.getElementById('deck-folder-missing-banner');
+    const missingText = document.getElementById('deck-missing-folder-text');
+
+    try {
+      const images = await SessionManager.loadImages(deck.folderPath);
+      this.cachedImages = images;
+      this.cachedImagesDeckId = this.currentDeckId;
+
+      if (missingBanner) missingBanner.classList.add('hidden');
+      if (this.boardState) {
+        this.boardState.activeDeckId = this.currentDeckId;
+        this.boardState.allReferences = images || [];
+      }
+
+      CardManager.migrateLegacyPathCards(this.currentDeckId, images);
+      this.applyBoardFilters();
+      this.renderBoardTags();
+      this.renderBoardGrid();
+      this.updateBoardFilterStatus();
+      this.renderDeckStats();
+      this.renderDeckFocusTags();
+      this.showToast(`Folder refreshed: ${images.length} references found`, 'check');
+    } catch (err) {
+      this.cachedImages = [];
+      this.cachedImagesDeckId = this.currentDeckId;
+      if (this.boardState) {
+        this.boardState.allReferences = [];
+        this.boardState.filteredReferences = [];
+      }
+      if (missingBanner) {
+        if (missingText) {
+          missingText.textContent = `Folder not found: "${this.formatShortPath(deck.folderPath)}". Did you rename or move this folder?`;
+        }
+        missingBanner.classList.remove('hidden');
+      }
+      this.renderBoardGrid();
+      this.showToast(`Rescan failed: ${err.message}`, 'alert');
+    } finally {
+      if (btnBoardRefresh) btnBoardRefresh.classList.remove('spinning');
+      if (btnDetailRefresh) btnDetailRefresh.classList.remove('spinning');
+    }
+  },
+
   updateFlashRecallUI() {
     const mgr = (typeof MemoryDrillManager !== 'undefined') ? MemoryDrillManager : null;
     if (!mgr) return;
@@ -3608,7 +3757,13 @@ const UI = {
     this.boardState.selectedRef = ref;
 
     if (ref && this.boardState.filteredReferences) {
-      const foundIdx = this.boardState.filteredReferences.findIndex(r => r.id === ref.id || (r.path && r.path === ref.path));
+      let foundIdx = -1;
+      if (ref.path) {
+        foundIdx = this.boardState.filteredReferences.findIndex(r => r.path === ref.path);
+      }
+      if (foundIdx === -1 && ref.id) {
+        foundIdx = this.boardState.filteredReferences.findIndex(r => r.id === ref.id);
+      }
       this.boardState.currentIndex = foundIdx;
     }
 
@@ -3619,7 +3774,19 @@ const UI = {
     if (cardEl) {
       cardEl.classList.add('selected');
     } else if (grid && ref) {
-      const el = grid.querySelector(`.board-ref-card[data-id="${ref.id}"]`);
+      let el = null;
+      if (ref.path) {
+        const escapedPath = (typeof CSS !== 'undefined' && typeof CSS.escape === 'function')
+          ? CSS.escape(ref.path)
+          : ref.path.replace(/["\\]/g, '\\$&');
+        el = grid.querySelector(`.board-ref-card[data-path="${escapedPath}"]`);
+      }
+      if (!el && ref.id) {
+        const escapedId = (typeof CSS !== 'undefined' && typeof CSS.escape === 'function')
+          ? CSS.escape(ref.id)
+          : ref.id.replace(/["\\]/g, '\\$&');
+        el = grid.querySelector(`.board-ref-card[data-id="${escapedId}"]`);
+      }
       if (el) el.classList.add('selected');
     }
   },
@@ -3848,11 +4015,11 @@ const UI = {
         toggleBtn.classList.remove('hidden');
         if (this.boardState.slideshowPaused) {
           toggleBtn.classList.add('paused');
-          if (toggleIcon) toggleIcon.textContent = '▶';
+          if (toggleIcon) toggleIcon.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
           if (toggleText) toggleText.textContent = 'Resume';
         } else {
           toggleBtn.classList.remove('paused');
-          if (toggleIcon) toggleIcon.textContent = '⏸';
+          if (toggleIcon) toggleIcon.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
           if (toggleText) toggleText.textContent = 'Pause';
         }
       } else {
@@ -3860,12 +4027,24 @@ const UI = {
       }
     }
 
-    // Synchronize highlighted card in board gallery grid
+    // Synchronize highlighted card in board gallery grid (match path before id)
     const ref = this.boardState.selectedRef;
     const grid = document.getElementById('board-gallery-grid');
     if (grid && ref) {
       grid.querySelectorAll('.board-ref-card.selected').forEach(c => c.classList.remove('selected'));
-      const activeEl = grid.querySelector(`.board-ref-card[data-id="${ref.id}"]`);
+      let activeEl = null;
+      if (ref.path) {
+        const escapedPath = (typeof CSS !== 'undefined' && typeof CSS.escape === 'function')
+          ? CSS.escape(ref.path)
+          : ref.path.replace(/["\\]/g, '\\$&');
+        activeEl = grid.querySelector(`.board-ref-card[data-path="${escapedPath}"]`);
+      }
+      if (!activeEl && ref.id) {
+        const escapedId = (typeof CSS !== 'undefined' && typeof CSS.escape === 'function')
+          ? CSS.escape(ref.id)
+          : ref.id.replace(/["\\]/g, '\\$&');
+        activeEl = grid.querySelector(`.board-ref-card[data-id="${escapedId}"]`);
+      }
       if (activeEl) activeEl.classList.add('selected');
     }
   },
@@ -5051,6 +5230,12 @@ const UI = {
 
     const editId = modal.dataset.editId;
     if (editId) {
+      const oldDeck = DeckManager.getById(editId);
+      if (oldDeck && oldDeck.folderPath && this.deckMeta) {
+        delete this.deckMeta[oldDeck.folderPath];
+      }
+      this.cachedImages = null;
+      this.cachedImagesDeckId = null;
       DeckManager.update(editId, name, folder, newLimit, reviewLimit);
       this.showToast('Deck updated', 'pencil');
     } else {

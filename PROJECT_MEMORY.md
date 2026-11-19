@@ -364,6 +364,22 @@ Implemented in `CardManager.rateCard(deckId, imageId, imageName, difficulty, stu
    - Shared, pure 2D canvas drawing helper supporting optical filters (Grayscale <kbd>G</kbd>, Invert <kbd>I</kbd>, Notan <kbd>N</kbd>, Silhouette <kbd>L</kbd>/<kbd>H</kbd>, 3-Value Posterize <kbd>P</kbd>, Squint Blur <kbd>S</kbd>), transforms (horizontal flip <kbd>M</kbd>, 90° rotate <kbd>R</kbd>, zoom/pan), and Smart Crop normalized child bounds (`{ x, y, width, height }`). Used by `PiPCanvasStreamer` for clean offscreen 2D canvas video streaming.
    - *(Note: Experimental Share Study Card export feature completely removed per user request.)*
 
+10. **Reference Board Sorting & Duplicate Teleportation Immunity**:
+    - **Multi-Criteria Sorting**: Reference Board filter bar includes `#board-sort-select` with options:
+      - `default`: Original scanned filesystem directory order.
+      - `name-asc`: Natural alphanumeric sorting (A–Z).
+      - `name-desc`: Reverse alphanumeric sorting (Z–A).
+      - `due`: Overdue and earliest SRS due dates first.
+      - `reviews`: Most frequently reviewed cards first.
+      - `hardest`: Lowest ease factor, high lapses, and 'again'/'hard' difficulty ratings first.
+      - `easiest`: Highest ease factor and 'easy' ratings first.
+    - **Teleportation Elimination**: When references share identical content hashes (e.g. duplicate files in different subdirectories such as index 700 and index 2318), all selection queries, index lookups (`findIndex`), and DOM attribute matching prioritize absolute `path` over content hash `id`. DOM queries select `[data-path="..."]` before falling back to `[data-id="..."]`, preventing jumping or teleporting to the first identical card.
+
+11. **Dynamic Folder Rescan & Relocation Lifecycle**:
+    - **On-Demand & Automatic Rescan**: Added `#btn-board-refresh` in Reference Board and `#btn-detail-refresh` in Deck Detail header. Clicking invalidates in-memory caches (`cachedImages`, `cachedImagesDeckId`, and `deckMeta`), triggers a clean `/api/images` scan, re-indexes cards, and updates view stats.
+    - **Folder Rename / Move Recognition**: When subfolders or folders are moved or renamed on disk, `CardManager.migrateLegacyPathCards` matches unmigrated legacy cards against scanned files by filename basename (`path.basename(oldPath) === path.basename(newPath)`), seamlessly carrying forward intervals, ease factors, lapses, tags, and review counts to the content-hash key.
+    - **Missing Folder Detection**: If a deck folder is missing or relocated on disk, the deck detail displays an amber relocate banner (`#deck-folder-missing-banner`) with a direct "Relocate Folder" action that opens the directory picker / deck edit modal to update `folderPath`. Saving invalidates stale in-memory image caches and immediately reloads the deck.
+
 ---
 
 ## 9. Verification Matrix
@@ -397,11 +413,14 @@ Implemented in `CardManager.rateCard(deckId, imageId, imageName, difficulty, stu
 | Zero inline scripts in index.html | `public/index.html` | `<script src="...">` tags | **VERIFIED** | Only loads external modular scripts with CSP `script-src 'self'` |
 | ColorPaletteManager CIELAB, Value Map & Gamut Mask | `public/js/palette.js` | Full module | **VERIFIED** | CIELAB extraction, Value bands, LCh Gamut Wheel & Export (.gpl, JSON, PNG) |
 | Reference Board & Dual-Mode Deck Detail | `public/js/board/board.js`, `public/index.html`, `public/style.css` | `BoardManager` & `UI.switchDeckTab` | **VERIFIED** | Segmented tabs, search & tag filter, thumbnail grid (small/medium/large), stage navigation & slideshow, zero SRS contamination |
+| Reference Board Sort & Teleportation Prevention | `public/js/board/board.js`, `public/js/ui/ui.js`, `public/index.html` | `BoardManager.setSortOrder`, `UI.applyBoardFilters` | **VERIFIED** | Multi-criteria sorting (Name A-Z/Z-A, Due, Reviews, Hardest, Easiest), path-first matching eliminates duplicate-hash teleportation |
+| Folder Rescan & Relocation Lifecycle | `public/js/ui/ui.js`, `public/js/srs/cards.js`, `public/index.html` | `UI.refreshCurrentDeck`, `CardManager.migrateLegacyPathCards` | **VERIFIED** | Manual & automatic folder rescanning, basename legacy card migration on folder move/rename, missing folder relocate banner |
+| Ghost Mode Interaction & HUD Hardening | `electron-main.js`, `public/style.css`, `public/index.html` | `toggleGhostMode`, `#ghost-mode-banner` | **VERIFIED** | Strict pointer-events lockdown (only Restore Clicks interactive), whitespace nowrap, zero emoji icons (inline SVGs) |
 | Reference Board DOM Sibling Isolation | `public/index.html` | Lines 338–631 | **VERIFIED** | `#deck-view-study` and `#deck-view-board` are independent siblings (Opens: 34, Closes: 34) |
 | Fullscreen wallpaper persistence & Zen isolation | `public/js/ui/ui.js`, `public/style.css` | `bindFullscreenEvents`, `setZenMode`, `style.css:132` | **VERIFIED** | Native window fullscreen on deck list/details keeps wallpaper visible; Zen mode scoped strictly to active session |
 | Flash & Recall 3-Phase State Machine & Grading Gate | `public/js/srs/drill.js`, `public/index.html`, `public/style.css` | `FlashRecallManager` & `UI.rateCurrentImage` | **VERIFIED** | Observe -> Blind Draw -> Reveal/Critique, rating gates (1-4 locked in phases 1 & 2), critique actions, full elapsed drill duration passed to SRS, zero cross-mode contamination |
 | Pure Filtered Canvas Renderer | `public/js/optics/render-canvas.js` | `renderFilteredCanvas` | **VERIFIED** | Pure 2D canvas helper with optical filters, transforms, and crops for `PiPCanvasStreamer` (Share Card removed per request) |
-| Test suite passes all tests | `tests/*.test.js` | 16 test files | **VERIFIED** | 172/172 passing tests via `npm test` |
+| Test suite passes all tests | `tests/*.test.js` | 16 test files | **VERIFIED** | 175/175 passing tests via `npm test` |
 
 ---
 

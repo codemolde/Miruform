@@ -37,7 +37,13 @@ const BoardManager = {
       ? this.filteredReferences
       : (this.allReferences || []);
     if (ref && list.length > 0) {
-      const idx = list.findIndex(r => (ref.path && r.path && r.path === ref.path) || (ref.id && r.id && r.id === ref.id));
+      let idx = -1;
+      if (ref.path) {
+        idx = list.findIndex(r => r.path === ref.path);
+      }
+      if (idx === -1 && ref.id) {
+        idx = list.findIndex(r => r.id === ref.id);
+      }
       this.currentIndex = idx >= 0 ? idx : 0;
     } else {
       this.currentIndex = -1;
