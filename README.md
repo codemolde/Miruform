@@ -70,6 +70,43 @@ npm run electron
 npm test
 ```
 
+### macOS Beta Releases & Gatekeeper Setup
+
+Pre-built macOS beta releases use **ad-hoc signing** (no paid Apple Developer certificate). Because ad-hoc builds are not notarized through Apple servers, macOS Gatekeeper blocks the application on first launch.
+
+#### Installing the App
+1. Open the downloaded `.dmg` and drag **Art Practice Studio** into your `/Applications` folder.
+2. Double-click the app to open it. macOS will display a warning: *"Art Practice Studio cannot be opened because the developer cannot be verified"*.
+3. Open **System Settings** → **Privacy & Security**, scroll down to the Security section, and click **Open Anyway**. *(On older macOS versions, right-click the app in Applications and select **Open**).*
+4. Alternatively, remove the quarantine attribute directly in Terminal:
+   ```bash
+   xattr -dr com.apple.quarantine "/Applications/Art Practice Studio.app"
+   ```
+
+#### Verifying Download Integrity (SHA-256)
+Ad-hoc signing ensures the bundle has not been altered after building, but does not verify developer identity. Verify your download against the published SHA-256 checksum:
+```bash
+shasum -a 256 dist/*.dmg
+```
+
+#### Important Limits for Beta Testers
+- **Updates**: macOS treats each newly downloaded build as an unknown app; you may need to repeat step 3 after installing updates.
+- **Auto-Updates**: Because ad-hoc binaries cannot be notarized, Electron's auto-updater is disabled. Update by downloading the new `.dmg` release manually.
+- **Security**: The app is unnotarized by Apple. Do not assume it is verified just because it has an ad-hoc signature—always verify the published SHA-256 checksum.
+
+#### Building Desktop Packages
+To build and verify the ad-hoc signed macOS distribution locally:
+```bash
+# Build macOS DMG (arm64 & x64)
+npm run dist:mac
+
+# Verify ad-hoc signature on generated bundle
+codesign -dv --verbose=4 "dist/mac-arm64/Art Practice Studio.app"
+
+# Verify Gatekeeper rejection (expected for ad-hoc signing)
+spctl --assess --type execute -v "dist/mac-arm64/Art Practice Studio.app"
+```
+
 ### Extension Ecosystem
 
 Art Practice Reference Studio includes a decoupled extension discovery hook. Optional add-ons can be placed inside:
