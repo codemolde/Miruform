@@ -2081,6 +2081,443 @@ app.post('/api/download-url', async (req, res) => {
   }
 });
 
+// ==================== STARTER DECKS & CC0 PUBLIC DOMAIN ENGINE ====================
+
+const starterDeckJobs = new Map();
+
+/**
+ * Automated Public Domain / CC0 Verification.
+ * Ensures the reference explicitly carries a Public Domain or CC0 license,
+ * originates from verified museum open-access domains, and uses HTTPS.
+ */
+function verifyPublicDomainReference(card) {
+  if (!card || typeof card !== 'object') return { valid: false, reason: 'Invalid card object' };
+
+  const license = String(card.license || '').toLowerCase();
+  const isPD = license.includes('cc0') || license.includes('public domain') || license.includes('open access');
+  if (!isPD) {
+    return { valid: false, reason: `License "${card.license}" is not verified CC0 / Public Domain` };
+  }
+
+  const url = String(card.url || '').trim();
+  if (!url || !url.startsWith('https://')) {
+    return { valid: false, reason: 'Image URL must use secure HTTPS' };
+  }
+
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    const ALLOWED_MUSEUM_DOMAINS = [
+      'openaccess-cdn.clevelandart.org',
+      'clevelandart.org',
+      'images.metmuseum.org',
+      'metmuseum.org',
+      'artic.edu',
+      'nga.gov',
+      'rijksmuseum.nl',
+      'wikimedia.org'
+    ];
+    const isAllowedHost = ALLOWED_MUSEUM_DOMAINS.some(dom => host === dom || host.endsWith('.' + dom));
+    if (!isAllowedHost) {
+      return { valid: false, reason: `Host ${host} is not in the authorized public domain museum registry` };
+    }
+  } catch (err) {
+    return { valid: false, reason: `Invalid image URL: ${err.message}` };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * GET /api/starter-deck/preview
+ * Proxy endpoint to serve preview thumbnails securely under CSP ('self').
+ * Validates origin with verifyPublicDomainReference and caches locally in userdata/starter_decks/.previews.
+ */
+app.get('/api/starter-deck/preview', async (req, res) => {
+  try {
+    const rawUrl = req.query.url;
+    if (!rawUrl || typeof rawUrl !== 'string') {
+      return res.status(400).json({ error: 'Missing "url" query parameter' });
+    }
+
+    const trimmedUrl = rawUrl.trim();
+    const check = verifyPublicDomainReference({ license: 'CC0', url: trimmedUrl });
+    if (!check.valid) {
+      return res.status(403).json({ error: `Preview blocked: ${check.reason}` });
+    }
+
+    // Disk cache directory
+    const previewCacheDir = path.join(USERDATA_DIR, 'starter_decks', '.previews');
+    if (!fs.existsSync(previewCacheDir)) {
+      fs.mkdirSync(previewCacheDir, { recursive: true });
+    }
+
+    const urlHash = crypto.createHash('sha256').update(trimmedUrl).digest('hex').slice(0, 24);
+    const cachedFilePath = path.join(previewCacheDir, `${urlHash}.jpg`);
+
+    if (fs.existsSync(cachedFilePath)) {
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+      return res.sendFile(cachedFilePath);
+    }
+
+    const fetchRes = await safeHttpRequest(trimmedUrl, {
+      timeoutMs: 15000,
+      maxBytes: 8 * 1024 * 1024
+    });
+
+    if (fetchRes.statusCode < 200 || fetchRes.statusCode >= 300 || fetchRes.buffer.length === 0) {
+      return res.status(502).json({ error: `Failed to fetch preview image (${fetchRes.statusCode})` });
+    }
+
+    let contentType = 'image/jpeg';
+    const buf = fetchRes.buffer;
+    if (buf.length >= 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) {
+      contentType = 'image/png';
+    } else if (buf.length >= 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') {
+      contentType = 'image/webp';
+    }
+
+    fs.promises.writeFile(cachedFilePath, buf).catch(e => {
+      console.warn('[StarterDeck] Failed caching preview:', e.message);
+    });
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    res.send(buf);
+  } catch (err) {
+    console.error('[API /api/starter-deck/preview] Error:', err.message);
+    res.status(500).json({ error: `Preview error: ${err.message}` });
+  }
+});
+
+/**
+ * GET /api/starter-decks
+ * Returns list of starter decks from public/starter-decks.json,
+ * verifying automated public domain compliance and reporting installation status.
+ */
+app.get('/api/starter-decks', (req, res) => {
+  try {
+    const catalogPath = path.join(__dirname, 'public', 'starter-decks.json');
+    if (!fs.existsSync(catalogPath)) {
+      return res.json([]);
+    }
+    const raw = fs.readFileSync(catalogPath, 'utf8');
+    const catalog = JSON.parse(raw);
+
+    // Read STATE_FILE to check installed decks
+    let installedDeckFolders = new Set();
+    if (fs.existsSync(STATE_FILE)) {
+      try {
+        const state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
+        const decks = Array.isArray(state.decks) ? state.decks : (state.data?.decks || []);
+        decks.forEach(d => {
+          if (d && d.folderPath) {
+            try {
+              installedDeckFolders.add(fs.realpathSync(d.folderPath));
+            } catch (e) {
+              installedDeckFolders.add(path.resolve(d.folderPath));
+            }
+          }
+        });
+      } catch (e) {}
+    }
+
+    const verifiedDecks = (Array.isArray(catalog) ? catalog : []).map(deck => {
+      const defaultDir = path.join(USERDATA_DIR, 'starter_decks', deck.id);
+      let isInstalled = false;
+      try {
+        const resolved = fs.realpathSync(defaultDir);
+        isInstalled = installedDeckFolders.has(resolved);
+      } catch (e) {
+        isInstalled = installedDeckFolders.has(path.resolve(defaultDir));
+      }
+
+      // Run automated public domain verification summary
+      const cards = Array.isArray(deck.cards) ? deck.cards : [];
+      let pdVerifiedCount = 0;
+      cards.forEach(c => {
+        if (verifyPublicDomainReference(c).valid) pdVerifiedCount++;
+      });
+
+      return {
+        id: deck.id,
+        title: deck.title,
+        description: deck.description,
+        category: deck.category,
+        tags: deck.tags,
+        cardCount: cards.length,
+        pdVerifiedCount,
+        allPublicDomain: pdVerifiedCount === cards.length,
+        previewImages: deck.previewImages || cards.slice(0, 4).map(c => c.url),
+        defaultSettings: deck.defaultSettings,
+        installed: isInstalled
+      };
+    });
+
+    res.json(verifiedDecks);
+  } catch (err) {
+    console.error('[API /api/starter-decks] Error:', err);
+    res.status(500).json({ error: `Failed to load starter decks: ${err.message}` });
+  }
+});
+
+/**
+ * GET /api/starter-deck/progress
+ * Polls active starter deck download job progress.
+ */
+app.get('/api/starter-deck/progress', (req, res) => {
+  const { jobId, deckId } = req.query;
+  if (!jobId && !deckId) {
+    return res.status(400).json({ error: 'Missing jobId or deckId query parameter' });
+  }
+
+  let job = null;
+  if (jobId) {
+    job = starterDeckJobs.get(jobId);
+  } else if (deckId) {
+    for (const j of starterDeckJobs.values()) {
+      if (j.deckId === deckId) {
+        job = j;
+        break;
+      }
+    }
+  }
+
+  if (!job) {
+    return res.status(404).json({ error: 'Job not found' });
+  }
+
+  res.json({
+    jobId: job.id,
+    deckId: job.deckId,
+    status: job.status,
+    total: job.total,
+    downloaded: job.downloaded,
+    percent: job.total > 0 ? Math.round((job.downloaded / job.total) * 100) : 0,
+    error: job.error,
+    deck: job.deck
+  });
+});
+
+/**
+ * POST /api/starter-deck/install
+ * Installs a curated starter deck:
+ * 1. Performs automated public domain license and origin checks on all items.
+ * 2. Creates the target starter deck folder and registers it with registerTrustedFolder.
+ * 3. Downloads all images safely with SSRF protection into the folder.
+ * 4. Automatically registers the deck into DeckManager / CardManager with default tags.
+ */
+app.post('/api/starter-deck/install', async (req, res) => {
+  try {
+    const { deckId, customFolderPath, customDeckName } = req.body || {};
+    if (!deckId || typeof deckId !== 'string') {
+      return res.status(400).json({ error: 'Missing or invalid deckId' });
+    }
+
+    const catalogPath = path.join(__dirname, 'public', 'starter-decks.json');
+    if (!fs.existsSync(catalogPath)) {
+      return res.status(404).json({ error: 'Starter deck catalog file not found' });
+    }
+
+    const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+    const deck = (Array.isArray(catalog) ? catalog : []).find(d => d.id === deckId);
+    if (!deck) {
+      return res.status(404).json({ error: `Starter deck "${deckId}" not found in catalog` });
+    }
+
+    const cards = Array.isArray(deck.cards) ? deck.cards : [];
+    if (cards.length === 0) {
+      return res.status(400).json({ error: 'Starter deck contains zero cards' });
+    }
+
+    // 1. Automated Public Domain Verification Gate
+    const verifiedCards = [];
+    for (const card of cards) {
+      const check = verifyPublicDomainReference(card);
+      if (!check.valid) {
+        console.warn(`[StarterDeck] Skipping item "${card.title}" due to public domain check failure: ${check.reason}`);
+        continue;
+      }
+      verifiedCards.push(card);
+    }
+
+    if (verifiedCards.length === 0) {
+      return res.status(400).json({ error: 'None of the starter deck references passed automated public domain verification' });
+    }
+
+    // 2. Setup Target Folder
+    let destFolder = customFolderPath ? path.resolve(customFolderPath) : path.join(USERDATA_DIR, 'starter_decks', deck.id);
+    fs.mkdirSync(destFolder, { recursive: true });
+    registerTrustedFolder(destFolder);
+
+    // 3. Initialize background download job
+    const jobId = 'job_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+    const job = {
+      id: jobId,
+      deckId: deck.id,
+      total: verifiedCards.length,
+      downloaded: 0,
+      status: 'downloading',
+      error: null,
+      deck: null,
+      startedAt: Date.now()
+    };
+    starterDeckJobs.set(jobId, job);
+
+    // Respond immediately with jobId so frontend can poll progress
+    res.json({
+      success: true,
+      jobId,
+      status: 'downloading',
+      total: verifiedCards.length,
+      message: `Starting download of ${verifiedCards.length} public domain references...`
+    });
+
+    // 4. Run download process asynchronously
+    (async () => {
+      try {
+        const savedCards = [];
+        const CONCURRENCY = 4;
+        let currentIndex = 0;
+
+        async function worker() {
+          while (currentIndex < verifiedCards.length) {
+            const cardIdx = currentIndex++;
+            const card = verifiedCards[cardIdx];
+            const cleanTitle = (card.title || 'reference')
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '_')
+              .replace(/^_+|_+$/g, '')
+              .slice(0, 40);
+            const prefix = String(cardIdx + 1).padStart(3, '0');
+
+            // Check if file already exists with any standard extension
+            let existingFile = null;
+            for (const testExt of ['jpg', 'png', 'webp']) {
+              const testPath = path.join(destFolder, `${prefix}_${cleanTitle}.${testExt}`);
+              if (fs.existsSync(testPath) && fs.statSync(testPath).size > 1000) {
+                existingFile = testPath;
+                break;
+              }
+            }
+
+            if (existingFile) {
+              const filename = path.basename(existingFile);
+              savedCards.push({ ...card, filename });
+              job.downloaded++;
+              continue;
+            }
+
+            try {
+              let imgRes = null;
+              for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                  imgRes = await safeHttpRequest(card.url, {
+                    timeoutMs: 30000,
+                    maxBytes: 25 * 1024 * 1024
+                  });
+                  if (imgRes && imgRes.statusCode >= 200 && imgRes.statusCode < 300 && imgRes.buffer.length > 0) {
+                    break;
+                  }
+                } catch (tryErr) {
+                  if (attempt === 2) throw tryErr;
+                  await new Promise(r => setTimeout(r, 1000));
+                }
+              }
+
+              if (imgRes && imgRes.statusCode >= 200 && imgRes.statusCode < 300 && imgRes.buffer.length > 0) {
+                const buffer = imgRes.buffer;
+                let ext = 'jpg';
+                if (buffer.length >= 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+                  ext = 'png';
+                } else if (buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP') {
+                  ext = 'webp';
+                }
+
+                const filename = `${prefix}_${cleanTitle}.${ext}`;
+                const filePath = path.join(destFolder, filename);
+                await fs.promises.writeFile(filePath, buffer);
+                savedCards.push({ ...card, filename });
+              }
+            } catch (dlErr) {
+              console.warn(`[StarterDeck] Failed to download "${card.title}" (${card.url}):`, dlErr.message);
+            }
+            job.downloaded++;
+          }
+        }
+
+        const workers = Array.from({ length: CONCURRENCY }, () => worker());
+        await Promise.all(workers);
+
+        // 5. Register Deck and Cards into STATE_FILE atomically
+        let state = {};
+        if (fs.existsSync(STATE_FILE)) {
+          try {
+            state = JSON.parse(await fs.promises.readFile(STATE_FILE, 'utf8'));
+          } catch (e) {
+            state = {};
+          }
+        }
+
+        if (!Array.isArray(state.decks)) state.decks = [];
+        if (!state.cards || typeof state.cards !== 'object') state.cards = {};
+
+        // Find or create deck
+        let existingDeck = state.decks.find(d => d.folderPath === destFolder);
+        const deckName = customDeckName || deck.title;
+        if (!existingDeck) {
+          existingDeck = {
+            id: 'deck_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+            name: deckName,
+            folderPath: destFolder,
+            newLimit: deck.defaultSettings?.newLimit || 20,
+            reviewLimit: deck.defaultSettings?.reviewLimit || 100,
+            createdAt: new Date().toISOString()
+          };
+          state.decks.push(existingDeck);
+        } else {
+          existingDeck.name = deckName;
+        }
+
+        // Register card entries with default tags
+        if (!state.cards[existingDeck.id]) {
+          state.cards[existingDeck.id] = {};
+        }
+        const deckCards = state.cards[existingDeck.id];
+
+        for (const cardInfo of savedCards) {
+          const imageId = cardInfo.filename;
+          if (!deckCards[imageId]) {
+            deckCards[imageId] = {
+              imageId,
+              imageName: cardInfo.title || cardInfo.filename,
+              reviewCount: 0,
+              tags: cardInfo.tags || ['gesture', 'dynamic', 'master-study'],
+              attempts: []
+            };
+          }
+        }
+
+        await writeStateFile(state);
+
+        job.deck = existingDeck;
+        job.status = 'completed';
+        console.log(`[StarterDeck] Installed "${deck.title}" with ${savedCards.length} cards into ${destFolder}`);
+
+      } catch (err) {
+        console.error('[StarterDeck] Background download failed:', err);
+        job.status = 'failed';
+        job.error = err.message;
+      }
+    })();
+
+  } catch (err) {
+    console.error('[API /api/starter-deck/install] Error:', err);
+    res.status(500).json({ error: `Install failed: ${err.message}` });
+  }
+});
+
 /**
  * Starts the HTTP server on the specified port.
  * Explicitly binds to loopback (127.0.0.1) for local security,
@@ -2143,6 +2580,7 @@ module.exports = {
   loadExtensions,
   loadedExtensions,
   extensionAllowedFolders,
+  verifyPublicDomainReference,
   clearLoadedExtensions: () => {
     loadedExtensions.clear();
     extensionAllowedFolders.clear();

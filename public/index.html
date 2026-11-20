@@ -169,6 +169,16 @@
                 </svg></span> Hotkeys <kbd>?</kbd>
             </button>
           </div>
+          <button type="button" id="btn-starter-decks" class="btn btn-secondary" title="Explore Curated CC0 Starter Decks">
+            <span class="btn-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </span> Starter Decks
+          </button>
           <button id="btn-new-deck" class="btn btn-primary">
             <span class="btn-icon">＋</span> New Deck
           </button>
@@ -285,8 +295,18 @@
               d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z" />
           </svg></div>
         <h3>No Decks Found</h3>
-        <p>Create your first reference deck or choose a folder to start practicing.</p>
-        <button id="btn-empty-new-deck" class="btn btn-primary btn-large">+ Create New Deck</button>
+        <p>Create your first reference deck or download a curated public domain starter deck.</p>
+        <div class="empty-state-buttons" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
+          <button id="btn-empty-new-deck" class="btn btn-primary btn-large">+ Create New Deck</button>
+          <button type="button" id="btn-empty-starter-decks" class="btn btn-secondary btn-large">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>Browse Starter Decks
+          </button>
+        </div>
       </div>
     </div>
 
@@ -2573,6 +2593,44 @@
         </div>
         <div class="modal-actions">
           <button type="button" id="btn-close-todays" class="btn btn-ghost">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MODAL: Starter Decks Downloader ==================== -->
+    <div id="modal-starter-decks" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="starter-decks-modal-title">
+      <div class="modal modal-large starter-decks-modal">
+        <div class="modal-header-row">
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:8px;" aria-hidden="true">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            </svg><span id="starter-decks-modal-title">Curated Starter Decks</span>
+          </h2>
+          <button type="button" class="btn-modal-close" id="btn-close-starter-decks-x" aria-label="Close modal">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <p class="modal-subtext">Verified CC0 &amp; Public Domain museum reference collections. One-click automated download directly into your studio library.</p>
+
+        <div id="starter-decks-list" class="starter-decks-list">
+          <!-- Rendered dynamically by UI.openStarterDecksModal() -->
+        </div>
+
+        <div class="modal-actions starter-decks-actions">
+          <div class="starter-deck-license-banner">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            <span>Automated copyright verification: 100% CC0 Public Domain references from museum collections (The Met, Cleveland Museum of Art). Commercial &amp; study use permitted.</span>
+          </div>
+          <button type="button" id="btn-close-starter-decks" class="btn btn-ghost">Close</button>
         </div>
       </div>
     </div>

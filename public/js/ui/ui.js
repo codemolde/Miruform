@@ -236,6 +236,22 @@ const UI = {
     // Header & Deck List
     document.getElementById('btn-new-deck').addEventListener('click', () => this.openDeckModal());
     document.getElementById('btn-empty-new-deck').addEventListener('click', () => this.openDeckModal());
+    const btnStarterDecks = document.getElementById('btn-starter-decks');
+    if (btnStarterDecks) {
+      btnStarterDecks.addEventListener('click', () => this.openStarterDecksModal());
+    }
+    const btnEmptyStarterDecks = document.getElementById('btn-empty-starter-decks');
+    if (btnEmptyStarterDecks) {
+      btnEmptyStarterDecks.addEventListener('click', () => this.openStarterDecksModal());
+    }
+    const btnCloseStarterDecks = document.getElementById('btn-close-starter-decks');
+    if (btnCloseStarterDecks) {
+      btnCloseStarterDecks.addEventListener('click', () => this.closeStarterDecksModal());
+    }
+    const btnCloseStarterDecksX = document.getElementById('btn-close-starter-decks-x');
+    if (btnCloseStarterDecksX) {
+      btnCloseStarterDecksX.addEventListener('click', () => this.closeStarterDecksModal());
+    }
     document.getElementById('btn-open-wallpaper').addEventListener('click', () => this.openWallpaperModal());
     document.getElementById('btn-detail-wallpaper').addEventListener('click', () => this.openWallpaperModal());
     document.getElementById('btn-open-shortcuts').addEventListener('click', () => this.openShortcutsModal());
@@ -1278,6 +1294,291 @@ const UI = {
   openBackupModal() {
     document.getElementById('backup-status').textContent = '';
     document.getElementById('modal-backup').classList.remove('hidden');
+  },
+
+  // ---- Starter Decks Downloader Modal ----
+  async openStarterDecksModal() {
+    const modal = document.getElementById('modal-starter-decks');
+    const listEl = document.getElementById('starter-decks-list');
+    if (!modal || !listEl) return;
+
+    modal.classList.remove('hidden');
+    listEl.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">Loading curated starter decks catalog...</div>';
+
+    try {
+      const res = await fetch('/api/starter-decks');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const decks = await res.json();
+      this.renderStarterDecks(decks);
+    } catch (err) {
+      console.warn('[StarterDecks] Error loading catalog from API, attempting fallback:', err);
+      try {
+        const directRes = await fetch('/starter-decks.json');
+        if (directRes.ok) {
+          const directDecks = await directRes.json();
+          this.renderStarterDecks(directDecks);
+          return;
+        }
+      } catch (e) {}
+      listEl.innerHTML = `<div style="padding: 24px; text-align: center; color: #f87171;">Failed to load starter decks catalog: ${this._esc(err.message)}</div>`;
+    }
+  },
+
+  closeStarterDecksModal() {
+    const modal = document.getElementById('modal-starter-decks');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  renderStarterDecks(decks) {
+    const listEl = document.getElementById('starter-decks-list');
+    if (!listEl) return;
+
+    if (!Array.isArray(decks) || decks.length === 0) {
+      listEl.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--text-muted);">No starter decks found in catalog.</div>';
+      return;
+    }
+
+    const installedDecks = (typeof DeckManager !== 'undefined' && Array.isArray(DeckManager.decks)) ? DeckManager.decks : [];
+
+    listEl.innerHTML = decks.map(deck => {
+      const existing = installedDecks.find(d =>
+        (d.name && d.name.toLowerCase() === deck.title.toLowerCase()) ||
+        (d.folderPath && d.folderPath.includes(deck.id))
+      );
+      const isInstalled = Boolean(existing || deck.installed);
+
+      const previewHtml = Array.isArray(deck.previewImages) && deck.previewImages.length > 0
+        ? `<div class="starter-deck-preview-strip">
+            ${deck.previewImages.slice(0, 4).map(url => {
+              const proxiedUrl = `/api/starter-deck/preview?url=${encodeURIComponent(url)}`;
+              return `<img src="${this._esc(proxiedUrl)}" class="starter-deck-thumb" alt="Preview" loading="lazy">`;
+            }).join('')}
+          </div>`
+        : '';
+
+      const tagsHtml = Array.isArray(deck.tags) && deck.tags.length > 0
+        ? `<div class="starter-deck-tags">
+            ${deck.tags.map(t => `<span class="starter-deck-tag">#${this._esc(t)}</span>`).join('')}
+          </div>`
+        : '';
+
+      return `
+        <div class="starter-deck-card" data-deck-id="${this._esc(deck.id)}">
+          <div class="starter-deck-header">
+            <div class="starter-deck-title-group">
+              <h3 class="starter-deck-title">${this._esc(deck.title)}</h3>
+              <div class="starter-deck-meta">
+                <span class="starter-deck-badge">${deck.cardCount || 75} References</span>
+                <span class="starter-deck-badge starter-deck-badge-pd">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg> CC0 Public Domain
+                </span>
+                <span style="font-size: 11px; color: var(--text-muted);">${this._esc(deck.category || 'Study Collection')}</span>
+              </div>
+            </div>
+          </div>
+          <p class="starter-deck-desc">${this._esc(deck.description)}</p>
+          ${previewHtml}
+          ${tagsHtml}
+          ${!isInstalled ? `
+            <div class="starter-deck-location-row">
+              <label for="starter-dest-${this._esc(deck.id)}" class="starter-deck-location-label">Save To Folder:</label>
+              <div class="starter-deck-location-group">
+                <input type="text" id="starter-dest-${this._esc(deck.id)}" class="starter-deck-location-input" placeholder="Click Choose Folder to select destination on disk..." spellcheck="false" value="">
+                <button type="button" class="btn btn-secondary btn-starter-browse-folder" data-deck-id="${this._esc(deck.id)}">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;" aria-hidden="true">
+                    <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
+                  </svg>Choose Folder…
+                </button>
+              </div>
+            </div>
+          ` : ''}
+          <div class="starter-deck-progress-box hidden" id="progress-box-${this._esc(deck.id)}">
+            <div class="starter-deck-progress-bar">
+              <div class="starter-deck-progress-fill" id="progress-fill-${this._esc(deck.id)}"></div>
+            </div>
+            <div class="starter-deck-progress-text">
+              <span id="progress-status-${this._esc(deck.id)}">Downloading references...</span>
+              <span id="progress-percent-${this._esc(deck.id)}">0%</span>
+            </div>
+          </div>
+          <div class="starter-deck-card-actions">
+            ${isInstalled && existing ? `
+              <button type="button" class="btn btn-secondary btn-open-starter-deck" data-installed-id="${this._esc(existing.id)}">
+                <span>✓ Installed • Open Deck</span>
+              </button>
+            ` : `
+              <button type="button" class="btn btn-primary btn-install-starter-deck" data-deck-id="${this._esc(deck.id)}">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>Download Deck (${deck.cardCount || 75} Cards)
+              </button>
+            `}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    listEl.querySelectorAll('.btn-starter-browse-folder').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const deckId = btn.dataset.deckId;
+        const inputEl = document.getElementById(`starter-dest-${deckId}`);
+        if (window.electronAPI && typeof window.electronAPI.pickDirectory === 'function') {
+          try {
+            const res = await window.electronAPI.pickDirectory();
+            if (!res.canceled && res.path && inputEl) {
+              inputEl.value = res.path;
+            }
+            return;
+          } catch (err) {
+            console.warn('[StarterDeck] Native directory picker error:', err);
+          }
+        }
+        // Fallback for browser mode
+        this.folderBrowserTargetInputId = `starter-dest-${deckId}`;
+        this.openFolderBrowser();
+      });
+    });
+
+    listEl.querySelectorAll('.btn-install-starter-deck').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const deckId = btn.dataset.deckId;
+        this.installStarterDeck(deckId, btn);
+      });
+    });
+
+    listEl.querySelectorAll('.btn-open-starter-deck').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const installedId = btn.dataset.installedId;
+        this.closeStarterDecksModal();
+        if (installedId) {
+          this.openDeckDetail(installedId);
+        }
+      });
+    });
+  },
+
+  async installStarterDeck(deckId, btnEl) {
+    if (!deckId) return;
+
+    const destInput = document.getElementById(`starter-dest-${deckId}`);
+    let chosenFolder = destInput ? destInput.value.trim() : '';
+
+    // If no folder path has been chosen yet, actively prompt the user for the folder location
+    if (!chosenFolder) {
+      if (window.electronAPI && typeof window.electronAPI.pickDirectory === 'function') {
+        try {
+          const res = await window.electronAPI.pickDirectory();
+          if (res.canceled || !res.path) {
+            return; // User canceled dialog
+          }
+          chosenFolder = res.path;
+          if (destInput) destInput.value = chosenFolder;
+        } catch (pickErr) {
+          console.warn('[StarterDeck] Directory picker error:', pickErr);
+        }
+      } else {
+        this.folderBrowserTargetInputId = `starter-dest-${deckId}`;
+        this.openFolderBrowser();
+        this.showToast('Please select a folder location for the new deck', 'info');
+        return;
+      }
+    }
+
+    if (!chosenFolder) {
+      this.showToast('Please select a folder location for the new deck', 'alert');
+      return;
+    }
+
+    const progressBox = document.getElementById(`progress-box-${deckId}`);
+    const progressFill = document.getElementById(`progress-fill-${deckId}`);
+    const progressStatus = document.getElementById(`progress-status-${deckId}`);
+    const progressPercent = document.getElementById(`progress-percent-${deckId}`);
+
+    if (btnEl) {
+      btnEl.disabled = true;
+      btnEl.textContent = 'Downloading...';
+    }
+    if (progressBox) progressBox.classList.remove('hidden');
+
+    try {
+      const res = await fetch('/api/starter-deck/install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deckId,
+          customFolderPath: chosenFolder
+        })
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `HTTP ${res.status}`);
+      }
+
+      const initData = await res.json();
+      const jobId = initData.jobId;
+
+      const pollInterval = setInterval(async () => {
+        try {
+          const pollRes = await fetch(`/api/starter-deck/progress?jobId=${encodeURIComponent(jobId)}`);
+          if (!pollRes.ok) return;
+          const job = await pollRes.json();
+
+          if (progressFill) progressFill.style.width = `${job.percent}%`;
+          if (progressPercent) progressPercent.textContent = `${job.percent}%`;
+          if (progressStatus) progressStatus.textContent = `Downloaded ${job.downloaded} of ${job.total} references...`;
+
+          if (job.status === 'completed') {
+            clearInterval(pollInterval);
+            if (typeof SoundFX !== 'undefined' && SoundFX.success) SoundFX.success();
+            this.showToast('Starter Deck installed: Master Gesture Collection', 'sparkles');
+
+            if (typeof Storage !== 'undefined' && typeof Storage.loadFromDisk === 'function') {
+              await Storage.loadFromDisk();
+            }
+            if (typeof DeckManager !== 'undefined') DeckManager.init();
+            if (typeof CardManager !== 'undefined') CardManager.init();
+            this.renderDeckList();
+
+            if (btnEl) {
+              btnEl.disabled = false;
+              btnEl.className = 'btn btn-secondary btn-open-starter-deck';
+              btnEl.innerHTML = '<span>✓ Installed • Open Deck</span>';
+              if (job.deck && job.deck.id) {
+                btnEl.dataset.installedId = job.deck.id;
+                btnEl.addEventListener('click', () => {
+                  this.closeStarterDecksModal();
+                  this.openDeckDetail(job.deck.id);
+                }, { once: true });
+              }
+            }
+            if (progressStatus) progressStatus.textContent = `Successfully downloaded ${job.downloaded} references. Ready for practice!`;
+          } else if (job.status === 'failed') {
+            clearInterval(pollInterval);
+            if (progressStatus) progressStatus.textContent = `Download failed: ${job.error || 'Unknown error'}`;
+            if (btnEl) {
+              btnEl.disabled = false;
+              btnEl.textContent = 'Retry Download';
+            }
+          }
+        } catch (pollErr) {
+          console.warn('[StarterDeck] Error polling progress:', pollErr);
+        }
+      }, 500);
+
+    } catch (err) {
+      console.error('[StarterDeck] Install error:', err);
+      if (progressStatus) progressStatus.textContent = `Error: ${err.message}`;
+      if (btnEl) {
+        btnEl.disabled = false;
+        btnEl.textContent = 'Retry Download';
+      }
+      this.showToast(`Starter deck install failed: ${err.message}`, 'alert');
+    }
   },
 
   // ---- Shortcuts Modal ----
@@ -5353,8 +5654,13 @@ const UI = {
 
   selectBrowsedFolder() {
     if (this.folderBrowserCurrentPath) {
-      document.getElementById('input-deck-folder').value = this.folderBrowserCurrentPath;
+      const targetId = this.folderBrowserTargetInputId || 'input-deck-folder';
+      const targetInput = document.getElementById(targetId);
+      if (targetInput) {
+        targetInput.value = this.folderBrowserCurrentPath;
+      }
     }
+    this.folderBrowserTargetInputId = null;
     this.closeFolderBrowser();
   },
 
