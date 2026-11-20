@@ -1102,6 +1102,110 @@ test('Case 34: Folder rename / move migration in CardManager and deck rescan', (
   assert.strictEqual(CardManager.cards[deckId]['/deck/old_subfolder/figure.jpg'], undefined, 'Old path key must be cleaned up');
 });
 
+test('Case 35: Reference Board auto-saves sketch without rating into card history', async () => {
+  const ctx = setupTestEnvironment();
+  const UI = ctx.UI;
+  const CardManager = ctx.CardManager;
+  const SketchComparison = ctx.SketchComparison;
+
+  const deckId = 'deck_board_sketch';
+  UI.currentDeckId = deckId;
+  const image = { id: 'img_sketch_1', name: 'sketch_ref.jpg', path: '/deck/sketch_ref.jpg' };
+  UI.cachedImages = [image];
+  UI.cachedImagesDeckId = deckId;
+
+  await UI.switchDeckTab('board');
+  UI.openBoardStage(image);
+  assert.strictEqual(UI.sessionSource, 'board');
+
+  // Load sketch in board mode
+  const mockDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  await SketchComparison._setSketch(mockDataUrl);
+
+  // Check attempt was saved to CardManager without requiring SRS rating
+  const attempts = CardManager.getAttempts(deckId, image.id);
+  assert.strictEqual(attempts.length, 1, 'Sketch attempt must be saved automatically');
+  assert.strictEqual(attempts[0].rating, 'board', 'Attempt rating must be board');
+  assert.ok(attempts[0].sketchUrl, 'Attempt must have a valid sketchUrl');
+
+  UI.closeBoardStage();
+});
+
+test('Case 36: Loading or selecting sketch opens side-by-side split view without forcing onion-skin overlay', async () => {
+  const ctx = setupTestEnvironment();
+  const UI = ctx.UI;
+  const SketchComparison = ctx.SketchComparison;
+  const SketchOverlay = ctx.SketchOverlay;
+
+  const deckId = 'deck_split_mode';
+  UI.currentDeckId = deckId;
+  const image = { id: 'img_split_1', name: 'pose.jpg', path: '/deck/pose.jpg' };
+  UI.cachedImages = [image];
+  UI.cachedImagesDeckId = deckId;
+
+  await UI.switchDeckTab('board');
+  UI.openBoardStage(image);
+
+  const mockDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  await SketchComparison._setSketch(mockDataUrl);
+
+  // Must activate side-by-side mode (split)
+  assert.strictEqual(SketchComparison.activeMode, 'split', 'Must switch to split comparison mode');
+  const splitView = ctx.document.getElementById('sketch-split-view');
+  assert.ok(!splitView.classList.contains('hidden'), 'Split view must not be hidden');
+
+  // Overlay critique dock must NOT be active
+  assert.strictEqual(SketchOverlay.active, false, 'SketchOverlay must not be made active on side-by-side sketch load');
+
+  UI.closeBoardStage();
+});
+
+test('Case 37: Board Stage navigation (Next/Prev) updates reference photo and sketch history list in active split view', async () => {
+  const ctx = setupTestEnvironment();
+  const UI = ctx.UI;
+  const SketchComparison = ctx.SketchComparison;
+
+  const deckId = 'deck_nav_sync';
+  UI.currentDeckId = deckId;
+  const img1 = { id: 'ref_1', name: 'First.jpg', path: '/deck/First.jpg' };
+  const img2 = { id: 'ref_2', name: 'Second.jpg', path: '/deck/Second.jpg' };
+  UI.cachedImages = [img1, img2];
+  UI.cachedImagesDeckId = deckId;
+
+  await UI.switchDeckTab('board');
+  UI.openBoardStage(img1);
+
+  // Upload sketch on first reference
+  const mockDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  await SketchComparison._setSketch(mockDataUrl);
+  assert.strictEqual(SketchComparison.activeMode, 'split');
+
+  const splitRefImg = ctx.document.getElementById('split-ref-image');
+  const splitRefName = ctx.document.getElementById('split-ref-name');
+  assert.strictEqual(splitRefName.textContent, 'First.jpg');
+
+  // Navigate to Next reference while in split view
+  UI.stepBoardReference('next');
+
+  // Reference in split view must update to Second.jpg immediately
+  assert.strictEqual(SketchComparison.activeMode, 'split', 'Split view must remain active across reference navigation');
+  assert.strictEqual(splitRefName.textContent, 'Second.jpg', 'Reference name must update to next card');
+  assert.ok(splitRefImg.src.includes('Second.jpg') || splitRefImg.src.includes('ref_2'), 'Reference photo must update to Second.jpg');
+
+  // History list must update and contain list markup rather than tabs
+  const listContainer = ctx.document.getElementById('split-history-list');
+  assert.ok(listContainer.innerHTML.includes('history-list-item'), 'History must render list items');
+  assert.ok(listContainer.innerHTML.includes('Current / Today'), 'History list must include current/today item');
+
+  // Close split view
+  SketchComparison.setMode('single');
+  assert.strictEqual(SketchComparison.activeMode, 'single');
+  const splitView = ctx.document.getElementById('sketch-split-view');
+  assert.ok(splitView.classList.contains('hidden'));
+
+  UI.closeBoardStage();
+});
+
 // -----------------------------------------------------------------------------
 // Security Checks: CSP, HTML Event Handlers & Escaping
 // -----------------------------------------------------------------------------

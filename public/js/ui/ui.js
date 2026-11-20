@@ -2667,8 +2667,14 @@ const UI = {
           e.stopPropagation();
           if (typeof SketchComparison !== 'undefined') {
             SketchComparison.setMode('single');
-            if (typeof SketchOverlay !== 'undefined' && SketchComparison.currentSketchDataUrl) {
-              SketchOverlay.loadFromDataUrl(SketchComparison.currentSketchDataUrl);
+            const deckId = this.currentDeckId || (typeof SessionManager !== 'undefined' && SessionManager.deckId);
+            const currentImage = (typeof SessionManager !== 'undefined' && SessionManager.currentImage)
+              || (typeof BoardManager !== 'undefined' && BoardManager.selectedRef);
+            const attempts = (deckId && currentImage) ? CardManager.getAttempts(deckId, currentImage.id) : [];
+            const sketchToOverlay = (SketchComparison.selectedAttemptIndex >= 0 && attempts[SketchComparison.selectedAttemptIndex]?.sketchUrl)
+              || SketchComparison.currentSketchDataUrl;
+            if (typeof SketchOverlay !== 'undefined' && sketchToOverlay) {
+              SketchOverlay.loadFromDataUrl(sketchToOverlay);
             }
           }
           break;

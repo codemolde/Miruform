@@ -122,6 +122,35 @@ const SketchOverlay = {
       SketchComparison.currentSketchDataUrl = dataUrl;
       SketchComparison.selectedAttemptIndex = -1;
       SketchComparison.syncUI();
+
+      // In Reference Board mode (or whenever no SRS rating pending), auto-save sketch without rating to card history
+      const isBoardMode = (typeof UI !== 'undefined' && (UI.sessionSource === 'board' || UI.isBoardStageOpen))
+        || (typeof SessionManager !== 'undefined' && !SessionManager.isActive);
+      if (isBoardMode) {
+        const deckId = (typeof UI !== 'undefined' && UI.currentDeckId)
+          || (typeof SessionManager !== 'undefined' && SessionManager.deckId)
+          || (typeof BoardManager !== 'undefined' && BoardManager.activeDeckId);
+        const currentImage = (typeof SessionManager !== 'undefined' && SessionManager.currentImage)
+          || (typeof BoardManager !== 'undefined' && BoardManager.selectedRef)
+          || (typeof UI !== 'undefined' && UI.boardState && UI.boardState.selectedRef);
+
+        if (deckId && currentImage && currentImage.id) {
+          SketchComparison.saveAttempt(
+            deckId,
+            currentImage.id,
+            currentImage.name || currentImage.id,
+            'board',
+            dataUrl
+          ).then(() => {
+            SketchComparison.updateHistoryBadge(deckId, currentImage.id);
+            if (SketchComparison.activeMode === 'split') {
+              SketchComparison.renderSplitView();
+            }
+          }).catch(err => {
+            console.warn('[SketchOverlay] Failed to auto-save board sketch:', err);
+          });
+        }
+      }
     }
 
     if (typeof ColorPaletteManager !== 'undefined' && ColorPaletteManager.onSketchChanged) {
@@ -370,7 +399,12 @@ const SketchOverlay = {
           e.preventDefault();
           const file = item.getAsFile();
           if (file) {
-            this.loadFromFile(file);
+            const isOverlayExplicitlyActive = this.active && this.dockVisible && !document.getElementById('sketch-critique-dock')?.classList.contains('hidden');
+            if (!isOverlayExplicitlyActive && typeof SketchComparison !== 'undefined') {
+              SketchComparison.loadSketch(file);
+            } else {
+              this.loadFromFile(file);
+            }
             return;
           }
         }
@@ -488,7 +522,13 @@ const SketchOverlay = {
     if (fileInput) {
       fileInput.addEventListener('change', (e) => {
         if (e.target.files && e.target.files[0]) {
-          this.loadFromFile(e.target.files[0]);
+          const file = e.target.files[0];
+          const isOverlayExplicitlyActive = this.active && this.dockVisible && !document.getElementById('sketch-critique-dock')?.classList.contains('hidden');
+          if (!isOverlayExplicitlyActive && typeof SketchComparison !== 'undefined') {
+            SketchComparison.loadSketch(file);
+          } else {
+            this.loadFromFile(file);
+          }
           e.target.value = '';
         }
       });
@@ -560,12 +600,21 @@ const SketchComparison = {
   onCardLoaded(deckId, imageId) {
     this.currentSketchDataUrl = null;
     this.selectedAttemptIndex = -1;
-    this.activeMode = 'single';
+
+    // If split view was active in board mode, keep split mode and refresh the view for the new card
+    const isBoard = typeof UI !== 'undefined' && (UI.sessionSource === 'board' || UI.isBoardStageOpen);
+    if (this.activeMode === 'split' && isBoard) {
+      this.renderSplitView();
+    } else {
+      this.setMode('single');
+    }
+
     this.syncUI();
     this.updateHistoryBadge(deckId, imageId);
   },
 
   updateHistoryBadge(deckId, imageId) {
+    if (!deckId || !imageId) return;
     const attempts = CardManager.getAttempts(deckId, imageId);
     const count = attempts.length;
 
@@ -584,6 +633,11 @@ const SketchComparison = {
       } else {
         pill.classList.add('hidden');
       }
+    }
+
+    const countEl = document.getElementById('history-sidebar-count');
+    if (countEl) {
+      countEl.textContent = count;
     }
   },
 
@@ -606,17 +660,12 @@ const SketchComparison = {
     reader.readAsDataURL(fileOrDataUrl);
   },
 
-  _setSketch(dataUrl) {
+  async _setSketch(dataUrl) {
     this.currentSketchDataUrl = dataUrl;
     this.selectedAttemptIndex = -1; // Viewing today's sketch
 
-    // Also mirror to SketchOverlay for onion-skin difference blend mode
-    if (typeof SketchOverlay !== 'undefined') {
-      SketchOverlay.loadFromDataUrl(dataUrl);
-    }
-
     // Always unblur reference so artist can see both side-by-side
-    if (UI.imageBlurred) {
+    if (typeof UI !== 'undefined' && UI.imageBlurred) {
       UI.clearBlurOverlay();
     }
 
@@ -624,7 +673,37 @@ const SketchComparison = {
     this.setMode('split');
     this.syncUI();
 
-    SoundFX.click();
+    // Auto-save sketch without rating in Reference Board mode (or whenever no SRS rating is required)
+    const isBoardMode = (typeof UI !== 'undefined' && (UI.sessionSource === 'board' || UI.isBoardStageOpen))
+      || (typeof SessionManager !== 'undefined' && !SessionManager.isActive);
+    if (isBoardMode) {
+      const deckId = (typeof UI !== 'undefined' && UI.currentDeckId)
+        || (typeof SessionManager !== 'undefined' && SessionManager.deckId)
+        || (typeof BoardManager !== 'undefined' && BoardManager.activeDeckId);
+      const currentImage = (typeof SessionManager !== 'undefined' && SessionManager.currentImage)
+        || (typeof BoardManager !== 'undefined' && BoardManager.selectedRef)
+        || (typeof UI !== 'undefined' && UI.boardState && UI.boardState.selectedRef);
+
+      if (deckId && currentImage && currentImage.id) {
+        try {
+          await this.saveAttempt(
+            deckId,
+            currentImage.id,
+            currentImage.name || currentImage.id,
+            'board',
+            dataUrl
+          );
+          this.updateHistoryBadge(deckId, currentImage.id);
+          this.renderSplitView();
+        } catch (err) {
+          console.warn('[SketchComparison] Failed to auto-save board sketch:', err);
+        }
+      }
+    }
+
+    if (typeof SoundFX !== 'undefined' && SoundFX.click) {
+      SoundFX.click();
+    }
   },
 
   removeCurrentSketch() {
@@ -671,23 +750,107 @@ const SketchComparison = {
     const splitRefName = document.getElementById('split-ref-name');
     const splitDateBadge = document.getElementById('split-sketch-date');
     const splitTag = document.getElementById('split-sketch-tag');
+    const listContainer = document.getElementById('split-history-list');
     const tabsContainer = document.getElementById('split-history-tabs');
+    const countEl = document.getElementById('history-sidebar-count');
 
-    if (!SessionManager.currentImage) return;
+    const currentImage = (typeof SessionManager !== 'undefined' && SessionManager.currentImage)
+      || (typeof BoardManager !== 'undefined' && BoardManager.selectedRef)
+      || (typeof UI !== 'undefined' && UI.boardState && UI.boardState.selectedRef);
+
+    if (!currentImage) return;
+
+    const deckId = (typeof SessionManager !== 'undefined' && SessionManager.deckId)
+      || (typeof UI !== 'undefined' && UI.currentDeckId)
+      || (typeof BoardManager !== 'undefined' && BoardManager.activeDeckId);
+    const imageId = currentImage.id;
 
     // 1. Render Reference Photo
     if (splitRefImg) {
-      splitRefImg.src = SessionManager.getImageUrl(SessionManager.currentImage);
+      const card = CardManager.getCard(deckId, imageId);
+      const hasCropImage = Boolean(card && card.cropImage && card.cropImage.cropUrl);
+      if (hasCropImage) {
+        splitRefImg.src = card.cropImage.cropUrl;
+      } else {
+        splitRefImg.src = (typeof SessionManager !== 'undefined' && SessionManager.getImageUrl)
+          ? SessionManager.getImageUrl(currentImage)
+          : `/api/image?path=${encodeURIComponent(currentImage.path || currentImage.id)}`;
+      }
     }
     if (splitRefName) {
-      splitRefName.textContent = SessionManager.currentImage.name || 'Reference';
+      splitRefName.textContent = currentImage.name || 'Reference';
     }
 
-    const deckId = SessionManager.deckId;
-    const imageId = SessionManager.currentImage.id;
     const attempts = CardManager.getAttempts(deckId, imageId);
+    if (countEl) countEl.textContent = attempts.length;
 
-    // 2. Build History Tabs
+    // 2. Build History List (Lists instead of horizontal tabs)
+    if (listContainer) {
+      let listHtml = '';
+
+      // Today / Current sketch entry at top
+      const isTodaySelected = this.selectedAttemptIndex === -1;
+      const starIcon = (typeof UI !== 'undefined' && UI.getIconSvg) ? UI.getIconSvg('star', 13, 'history-item-star') : '';
+      const hasCurrent = Boolean(this.currentSketchDataUrl);
+      const currentThumb = this.currentSketchDataUrl;
+
+      listHtml += `
+        <div class="history-list-item ${isTodaySelected ? 'active' : ''}" data-idx="-1" role="listitem" tabindex="0" title="Current / Today's Sketch">
+          <div class="history-item-thumb-box">
+            ${currentThumb ? `<img src="${UI._esc(currentThumb)}" class="history-thumb-img" alt="Today">` : `<span class="history-thumb-placeholder">${starIcon}</span>`}
+          </div>
+          <div class="history-item-details">
+            <div class="history-item-row-top">
+              <span class="history-item-label">Current / Today</span>
+              ${hasCurrent ? `<span class="history-item-badge badge-active">Active</span>` : ''}
+            </div>
+            <div class="history-item-date">${hasCurrent ? 'Loaded sketch' : 'Awaiting sketch'}</div>
+          </div>
+        </div>
+      `;
+
+      if (attempts.length > 0) {
+        attempts.forEach((att, idx) => {
+          const isSelected = this.selectedAttemptIndex === idx;
+          const ratingKey = (att.rating || 'board').toLowerCase();
+          const sketchUrl = (att && isValidSketchUrl(att.sketchUrl)) ? att.sketchUrl : '';
+          const placeholderIcon = (typeof UI !== 'undefined' && UI.getIconSvg) ? UI.getIconSvg('image', 13) : '';
+
+          listHtml += `
+            <div class="history-list-item ${isSelected ? 'active' : ''}" data-idx="${idx}" role="listitem" tabindex="0" title="${UI._esc(`${att.date} • ${att.rating || 'board'}`)}">
+              <div class="history-item-thumb-box">
+                ${sketchUrl ? `<img src="${UI._esc(sketchUrl)}" class="history-thumb-img" alt="Attempt #${idx + 1}">` : `<span class="history-thumb-placeholder">${placeholderIcon}</span>`}
+              </div>
+              <div class="history-item-details">
+                <div class="history-item-row-top">
+                  <span class="history-item-label">Attempt #${idx + 1}</span>
+                  <span class="history-item-badge badge-${UI._esc(ratingKey)}">${UI._esc(att.rating || 'board')}</span>
+                </div>
+                <div class="history-item-date">${UI._esc(att.date || '')}</div>
+              </div>
+            </div>
+          `;
+        });
+      } else {
+        listHtml += `
+          <div class="history-list-empty">
+            <span>No past attempts yet</span>
+          </div>
+        `;
+      }
+
+      listContainer.innerHTML = listHtml;
+
+      listContainer.querySelectorAll('.history-list-item').forEach(item => {
+        item.addEventListener('click', () => {
+          this.selectedAttemptIndex = parseInt(item.dataset.idx, 10);
+          this.renderSplitView();
+          if (typeof SoundFX !== 'undefined' && SoundFX.click) SoundFX.click();
+        });
+      });
+    }
+
+    // Keep tabsContainer in sync if present
     if (tabsContainer) {
       let tabsHtml = '';
       if (attempts.length > 0) {
@@ -716,7 +879,7 @@ const SketchComparison = {
         btn.addEventListener('click', () => {
           this.selectedAttemptIndex = parseInt(btn.dataset.idx, 10);
           this.renderSplitView();
-          SoundFX.click();
+          if (typeof SoundFX !== 'undefined' && SoundFX.click) SoundFX.click();
         });
       });
     }
@@ -735,8 +898,8 @@ const SketchComparison = {
         }
       }
       if (splitSketchEmpty) splitSketchEmpty.classList.add('hidden');
-      if (splitTag) splitTag.textContent = `Attempt #${this.selectedAttemptIndex + 1}`;
-      if (splitDateBadge) splitDateBadge.textContent = `${att.date} • ${att.rating.toUpperCase()}`;
+      if (splitTag) splitTag.innerHTML = `${(typeof UI !== 'undefined' && UI.getIconSvg) ? UI.getIconSvg('history', 12) : ''} Attempt #${this.selectedAttemptIndex + 1}`;
+      if (splitDateBadge) splitDateBadge.textContent = `${att.date} • ${(att.rating || 'BOARD').toUpperCase()}`;
     } else if (this.currentSketchDataUrl) {
       // Viewing today's sketch
       if (splitSketchImg) {
@@ -744,8 +907,8 @@ const SketchComparison = {
         splitSketchImg.classList.remove('hidden');
       }
       if (splitSketchEmpty) splitSketchEmpty.classList.add('hidden');
-      if (splitTag) splitTag.innerHTML = `${UI.getIconSvg('pencil', 12)} Your Sketch`;
-      if (splitDateBadge) splitDateBadge.textContent = 'Today (Rating...)';
+      if (splitTag) splitTag.innerHTML = `${(typeof UI !== 'undefined' && UI.getIconSvg) ? UI.getIconSvg('pencil', 12) : ''} Your Sketch`;
+      if (splitDateBadge) splitDateBadge.textContent = 'Today';
     } else {
       // No sketch attached yet for today
       if (splitSketchImg) {
@@ -753,7 +916,7 @@ const SketchComparison = {
         splitSketchImg.classList.add('hidden');
       }
       if (splitSketchEmpty) splitSketchEmpty.classList.remove('hidden');
-      if (splitTag) splitTag.innerHTML = `${UI.getIconSvg('pencil', 12)} Your Sketch`;
+      if (splitTag) splitTag.innerHTML = `${(typeof UI !== 'undefined' && UI.getIconSvg) ? UI.getIconSvg('pencil', 12) : ''} Your Sketch`;
       if (splitDateBadge) splitDateBadge.textContent = 'Awaiting Sketch';
     }
   },
@@ -877,8 +1040,15 @@ const SketchComparison = {
     const toggleOverlayBtn = document.getElementById('btn-toggle-overlay-view');
     if (toggleOverlayBtn) toggleOverlayBtn.addEventListener('click', () => {
       this.setMode('single');
-      if (typeof SketchOverlay !== 'undefined' && this.currentSketchDataUrl) {
-        SketchOverlay.loadFromDataUrl(this.currentSketchDataUrl);
+      const deckId = (typeof SessionManager !== 'undefined' && SessionManager.deckId)
+        || (typeof UI !== 'undefined' && UI.currentDeckId);
+      const currentImage = (typeof SessionManager !== 'undefined' && SessionManager.currentImage)
+        || (typeof BoardManager !== 'undefined' && BoardManager.selectedRef);
+      const attempts = (deckId && currentImage) ? CardManager.getAttempts(deckId, currentImage.id) : [];
+      const sketchToOverlay = (this.selectedAttemptIndex >= 0 && attempts[this.selectedAttemptIndex]?.sketchUrl)
+        || this.currentSketchDataUrl;
+      if (typeof SketchOverlay !== 'undefined' && sketchToOverlay) {
+        SketchOverlay.loadFromDataUrl(sketchToOverlay);
       }
     });
 

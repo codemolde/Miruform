@@ -94,17 +94,49 @@ shasum -a 256 dist/*.dmg
 - **Auto-Updates**: Because ad-hoc binaries cannot be notarized, Electron's auto-updater is disabled. Update by downloading the new `.dmg` release manually.
 - **Security**: The app is unnotarized by Apple. Do not assume it is verified just because it has an ad-hoc signature—always verify the published SHA-256 checksum.
 
-#### Building Desktop Packages
-To build and verify the ad-hoc signed macOS distribution locally:
+### Windows Installation & SmartScreen Setup
+
+Windows beta releases are provided as an NSIS installer (`Art Practice Studio Setup <version>.exe`) and a standalone portable executable (`Art Practice Studio <version>.exe`).
+
+Because pre-built beta releases are unsigned, **Microsoft Defender SmartScreen** will flag the application on first launch.
+
+#### Installing & Running on Windows
+1. Download either the installer setup (`.exe`) or the portable executable (`.exe`).
+2. Double-click the downloaded file.
+3. When Windows SmartScreen displays *"Windows protected your PC — Microsoft Defender SmartScreen prevented an unrecognized app from starting"*:
+   - Click **More info**.
+   - Click **Run anyway**.
+4. **Installer version**: Follow the setup prompts to install **Art Practice Studio** to your system with Start Menu and Desktop shortcuts.
+5. **Portable version**: Move the `.exe` to any folder of your choice and launch directly without installation.
+
+#### Verifying Download Integrity (SHA-256)
+Verify the file checksum against published release hashes using PowerShell or Command Prompt:
+
+```powershell
+# PowerShell
+Get-FileHash -Algorithm SHA256 "Art Practice Studio Setup 1.0.0.exe"
+```
+
+```cmd
+:: Command Prompt
+certutil -hashfile "Art Practice Studio Setup 1.0.0.exe" SHA256
+```
+
+### Building Desktop Packages (macOS & Windows)
+To package the desktop applications locally from source:
+
 ```bash
-# Build macOS DMG (arm64 & x64)
+# Build macOS DMG (arm64 & x64, ad-hoc signed)
 npm run dist:mac
 
-# Verify ad-hoc signature on generated bundle
+# Verify ad-hoc signature on generated macOS bundle
 codesign -dv --verbose=4 "dist/mac-arm64/Art Practice Studio.app"
 
 # Verify Gatekeeper rejection (expected for ad-hoc signing)
 spctl --assess --type execute -v "dist/mac-arm64/Art Practice Studio.app"
+
+# Build Windows installer and portable executables
+npm run dist:win
 ```
 
 ### Extension Ecosystem
