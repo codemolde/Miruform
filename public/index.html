@@ -1887,7 +1887,7 @@
                   <span id="split-sketch-date" class="split-date-badge">Today</span>
                 </div>
                 <div class="split-header-right">
-                  <div id="split-history-tabs" class="split-history-tabs"></div>
+                  <div id="split-history-tabs" class="split-history-tabs hidden" style="display:none;"></div>
                   <button type="button" id="btn-close-split-view" class="btn-dock-close"
                     title="Close Side-by-Side View [Y]"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"
                       stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1896,28 +1896,44 @@
                     </svg></button>
                 </div>
               </div>
-              <div class="split-pane-body" id="split-sketch-body">
-                <img id="split-sketch-image" src="" alt="Sketch Attempt" draggable="false">
-                <!-- Empty state dropzone inside split view if no sketch has been attached yet -->
-                <div id="split-sketch-empty" class="split-sketch-empty">
-                  <span class="split-empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
-                      <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
-                      <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
-                      <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
-                      <path
-                        d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.563-2.512 5.563-5.563C22 6.5 17.5 2 12 2z" />
-                    </svg></span>
-                  <span class="split-empty-title">Drop Sketch or Paste <kbd>Cmd+V</kbd></span>
-                  <p class="split-empty-desc">Compare your line work and proportions directly next to the original
-                    photo.</p>
-                  <button type="button" id="btn-split-upload-sketch" class="btn btn-secondary btn-small"><svg width="12"
-                      height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;">
-                      <path
-                        d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
-                    </svg>Choose Image</button>
+              <div class="split-sketch-layout">
+                <div class="split-pane-body" id="split-sketch-body">
+                  <img id="split-sketch-image" src="" alt="Sketch Attempt" draggable="false">
+                  <!-- Empty state dropzone inside split view if no sketch has been attached yet -->
+                  <div id="split-sketch-empty" class="split-sketch-empty">
+                    <span class="split-empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
+                        <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
+                        <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
+                        <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
+                        <path
+                          d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.563-2.512 5.563-5.563C22 6.5 17.5 2 12 2z" />
+                      </svg></span>
+                    <span class="split-empty-title">Drop Sketch or Paste <kbd>Cmd+V</kbd></span>
+                    <p class="split-empty-desc">Compare your line work and proportions directly next to the original
+                      photo.</p>
+                    <button type="button" id="btn-split-upload-sketch" class="btn btn-secondary btn-small"><svg width="12"
+                        height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;">
+                        <path
+                          d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
+                      </svg>Choose Image</button>
+                  </div>
+                </div>
+
+                <div class="split-history-sidebar" id="split-history-sidebar">
+                  <div class="split-history-sidebar-header">
+                    <span class="history-sidebar-title">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                      </svg>Past Events
+                    </span>
+                    <span id="history-sidebar-count" class="history-sidebar-count">0</span>
+                  </div>
+                  <div id="split-history-list" class="split-history-list" role="list"></div>
                 </div>
               </div>
             </div>
