@@ -468,6 +468,35 @@ const CardManager = {
     return card.attempts;
   },
 
+  deleteAttempt(deckId, imageId, indexOrId) {
+    if (!this.cards[deckId] || !this.cards[deckId][imageId]) return [];
+    const card = this.cards[deckId][imageId];
+    if (!Array.isArray(card.attempts)) return [];
+
+    let removed = null;
+    if (typeof indexOrId === 'number' && indexOrId >= 0 && indexOrId < card.attempts.length) {
+      removed = card.attempts.splice(indexOrId, 1)[0];
+    } else if (typeof indexOrId === 'string') {
+      const idx = card.attempts.findIndex(a => a && (a.id === indexOrId || a.sketchUrl === indexOrId));
+      if (idx >= 0) {
+        removed = card.attempts.splice(idx, 1)[0];
+      }
+    }
+
+    if (removed) {
+      this.save();
+      if (typeof Storage !== 'undefined') {
+        if (typeof Storage.syncToServer === 'function') {
+          Storage.syncToServer(false).catch(() => { });
+        } else if (typeof Storage.syncToDisk === 'function') {
+          Storage.syncToDisk(false).catch(() => { });
+        }
+      }
+    }
+
+    return card.attempts;
+  },
+
   getTagsForCard(deckId, imageId) {
     const card = this.getCard(deckId, imageId);
     return card && Array.isArray(card.tags) ? [...card.tags] : [];

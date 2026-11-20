@@ -82,6 +82,41 @@ function setupTestEnvironment() {
       appendChild(child) { return child; },
       removeChild(child) { return child; },
       remove() {},
+      getContext() {
+        const dummyCtx = {
+          clearRect() {},
+          beginPath() {},
+          arc() {},
+          fill() {},
+          stroke() {},
+          moveTo() {},
+          lineTo() {},
+          closePath() {},
+          drawImage() {},
+          save() {},
+          restore() {},
+          scale() {},
+          translate() {},
+          rotate() {},
+          setLineDash() {},
+          fillRect() {},
+          strokeRect() {},
+          fillText() {},
+          strokeText() {},
+          createImageData(w = 1, h = 1) { return { data: new Uint8ClampedArray(w * h * 4) }; },
+          putImageData() {},
+          getImageData() { return { data: new Uint8ClampedArray(4) }; }
+        };
+        return new Proxy(dummyCtx, {
+          get(target, prop) {
+            if (prop in target) return target[prop];
+            return () => {};
+          }
+        });
+      },
+      toDataURL() {
+        return 'data:image/png;base64,iVBORw0KGgo=';
+      },
       click() {
         this.dispatchEvent({ type: 'click', target: this, closest: () => this });
       }
@@ -156,7 +191,7 @@ function setupTestEnvironment() {
 
   vm.createContext(context);
   const exported = vm.runInContext(
-    appJsCode + '\n;({ UI, PiPCanvasStreamer, TimerManager, CardManager, DeckManager, SessionManager, BoardManager, ReviewHistory, ArtistToolbox, SoundFX, SmartCropManager, Storage, localDateStr })',
+    appJsCode + '\n;({ UI, PiPCanvasStreamer, TimerManager, CardManager, DeckManager, SessionManager, BoardManager, ReviewHistory, ArtistToolbox, SoundFX, SmartCropManager, Storage, localDateStr, SketchComparison, SketchOverlay })',
     context
   );
 
@@ -1202,6 +1237,106 @@ test('Case 37: Board Stage navigation (Next/Prev) updates reference photo and sk
   assert.strictEqual(SketchComparison.activeMode, 'single');
   const splitView = ctx.document.getElementById('sketch-split-view');
   assert.ok(splitView.classList.contains('hidden'));
+
+  UI.closeBoardStage();
+});
+
+test('Case 38: Toggling Onion-Skin Overlay after saving a sketch does NOT create duplicate attempts', async () => {
+  const ctx = setupTestEnvironment();
+  const UI = ctx.UI;
+  const CardManager = ctx.CardManager;
+  const SketchComparison = ctx.SketchComparison;
+  const SketchOverlay = ctx.SketchOverlay;
+
+  const deckId = 'deck_overlay_dedup';
+  const img = { id: 'ref_dedup_1', name: 'Pose.jpg', path: '/deck/Pose.jpg' };
+  UI.currentDeckId = deckId;
+  UI.cachedImages = [img];
+  UI.cachedImagesDeckId = deckId;
+
+  await UI.switchDeckTab('board');
+  UI.openBoardStage(img);
+
+  const mockDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+  // 1. Initial sketch upload in board mode saves Attempt #1
+  await SketchComparison._setSketch(mockDataUrl);
+  let attempts = CardManager.getAttempts(deckId, img.id);
+  assert.strictEqual(attempts.length, 1, 'Initial upload creates exactly 1 attempt');
+
+  // 2. Toggling Onion Skin Overlay must render overlay without re-saving duplicate attempt
+  SketchOverlay.loadFromDataUrl(mockDataUrl);
+  attempts = CardManager.getAttempts(deckId, img.id);
+  assert.strictEqual(attempts.length, 1, 'Loading into SketchOverlay does not create duplicate attempt');
+
+  // 3. Directly invoking saveAttempt with identical dataUrl returns existing attempt and does not increment
+  const savedAgain = await SketchComparison.saveAttempt(deckId, img.id, 'Pose.jpg', 'board', mockDataUrl);
+  assert.ok(savedAgain, 'saveAttempt returns attempt record');
+  attempts = CardManager.getAttempts(deckId, img.id);
+  assert.strictEqual(attempts.length, 1, 'Attempt count must remain 1 after deduplicated saveAttempt call');
+
+  UI.closeBoardStage();
+});
+
+test('Case 39: Sketch deletion removes attempt from CardManager, adjusts active index, and updates UI', async () => {
+  const ctx = setupTestEnvironment();
+  const UI = ctx.UI;
+  const CardManager = ctx.CardManager;
+  const SketchComparison = ctx.SketchComparison;
+
+  const deckId = 'deck_sketch_del';
+  const img = { id: 'ref_del_1', name: 'Figure.jpg', path: '/deck/Figure.jpg' };
+  UI.currentDeckId = deckId;
+  UI.cachedImages = [img];
+  UI.cachedImagesDeckId = deckId;
+
+  // Prepopulate card with two attempts
+  CardManager.cards[deckId] = {
+    [img.id]: {
+      imageId: img.id,
+      attempts: [
+        { id: 'att_1', date: '2026-11-19', rating: 'hard', sketchUrl: 'data:image/png;base64,att1' },
+        { id: 'att_2', date: '2026-11-20', rating: 'easy', sketchUrl: 'data:image/png;base64,att2' }
+      ]
+    }
+  };
+
+  await UI.switchDeckTab('board');
+  UI.openBoardStage(img);
+  SketchComparison.setMode('split');
+
+  let attempts = CardManager.getAttempts(deckId, img.id);
+  assert.strictEqual(attempts.length, 2);
+
+  const countBadge = ctx.document.getElementById('history-sidebar-count');
+  assert.strictEqual(countBadge.textContent, '2');
+
+  // Select attempt #2 (index 1)
+  SketchComparison.selectedAttemptIndex = 1;
+  SketchComparison.renderSplitView();
+
+  // Delete attempt #2
+  await SketchComparison.deleteAttempt(deckId, img.id, 1);
+
+  attempts = CardManager.getAttempts(deckId, img.id);
+  assert.strictEqual(attempts.length, 1, 'Attempts count decrements to 1');
+  assert.strictEqual(attempts[0].id, 'att_1', 'Remaining attempt is att_1');
+  assert.strictEqual(countBadge.textContent, '1', 'Sidebar count badge updates to 1');
+  assert.strictEqual(SketchComparison.selectedAttemptIndex, -1, 'Active index resets cleanly to -1 (Current)');
+
+  // Set a current sketch data url and test deleteCurrentSketch
+  SketchComparison.currentSketchDataUrl = 'data:image/png;base64,current';
+  SketchComparison.renderSplitView();
+  assert.strictEqual(Boolean(SketchComparison.currentSketchDataUrl), true);
+
+  SketchComparison.deleteCurrentSketch(deckId, img.id);
+  assert.strictEqual(SketchComparison.currentSketchDataUrl, null, 'Current sketch data URL is cleared');
+
+  // Delete remaining attempt (index 0)
+  await SketchComparison.deleteAttempt(deckId, img.id, 0);
+  attempts = CardManager.getAttempts(deckId, img.id);
+  assert.strictEqual(attempts.length, 0, 'All attempts deleted');
+  assert.strictEqual(countBadge.textContent, '0', 'Sidebar count badge updates to 0');
 
   UI.closeBoardStage();
 });

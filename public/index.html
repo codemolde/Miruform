@@ -807,13 +807,6 @@
               title="Toggle Ghost Mode: Click-Through Overlay [Cmd+Shift+G]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M9 18h6" />
-                <path d="M10 22h4" />
-                <path
-                  d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7Z" />
-              </svg>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M9 10h.01" />
                 <path d="M15 10h.01" />
                 <path d="M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z" />
@@ -1885,6 +1878,15 @@
                       <path d="m15 5 4 4" />
                     </svg>Your Sketch</span>
                   <span id="split-sketch-date" class="split-date-badge">Today</span>
+                  <button type="button" id="btn-split-delete-sketch" class="btn btn-ghost-mini btn-split-delete hidden"
+                    title="Delete this sketch attempt" aria-label="Delete this sketch attempt">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;">
+                      <path d="M3 6h18" />
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                    </svg>Delete
+                  </button>
                 </div>
                 <div class="split-header-right">
                   <div id="split-history-tabs" class="split-history-tabs hidden" style="display:none;"></div>

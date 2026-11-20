@@ -76,6 +76,29 @@ const SketchOverlay = {
     const reader = new FileReader();
     reader.onload = (e) => {
       this.loadFromDataUrl(e.target.result);
+      if (typeof SketchComparison !== 'undefined') {
+        const isBoardMode = (typeof UI !== 'undefined' && (UI.sessionSource === 'board' || UI.isBoardStageOpen))
+          || (typeof SessionManager !== 'undefined' && !SessionManager.isActive);
+        if (isBoardMode) {
+          const deckId = (typeof UI !== 'undefined' && UI.currentDeckId)
+            || (typeof SessionManager !== 'undefined' && SessionManager.deckId)
+            || (typeof BoardManager !== 'undefined' && BoardManager.activeDeckId);
+          const currentImage = (typeof SessionManager !== 'undefined' && SessionManager.currentImage)
+            || (typeof BoardManager !== 'undefined' && BoardManager.selectedRef)
+            || (typeof UI !== 'undefined' && UI.boardState && UI.boardState.selectedRef);
+          if (deckId && currentImage && currentImage.id) {
+            SketchComparison.saveAttempt(
+              deckId,
+              currentImage.id,
+              currentImage.name || currentImage.id,
+              'board',
+              e.target.result
+            ).then(() => {
+              SketchComparison.updateHistoryBadge(deckId, currentImage.id);
+            }).catch(() => { });
+          }
+        }
+      }
     };
     reader.readAsDataURL(file);
   },
@@ -119,37 +142,10 @@ const SketchOverlay = {
     this.syncUI();
 
     if (typeof SketchComparison !== 'undefined') {
-      SketchComparison.currentSketchDataUrl = dataUrl;
-      SketchComparison.selectedAttemptIndex = -1;
-      SketchComparison.syncUI();
-
-      // In Reference Board mode (or whenever no SRS rating pending), auto-save sketch without rating to card history
-      const isBoardMode = (typeof UI !== 'undefined' && (UI.sessionSource === 'board' || UI.isBoardStageOpen))
-        || (typeof SessionManager !== 'undefined' && !SessionManager.isActive);
-      if (isBoardMode) {
-        const deckId = (typeof UI !== 'undefined' && UI.currentDeckId)
-          || (typeof SessionManager !== 'undefined' && SessionManager.deckId)
-          || (typeof BoardManager !== 'undefined' && BoardManager.activeDeckId);
-        const currentImage = (typeof SessionManager !== 'undefined' && SessionManager.currentImage)
-          || (typeof BoardManager !== 'undefined' && BoardManager.selectedRef)
-          || (typeof UI !== 'undefined' && UI.boardState && UI.boardState.selectedRef);
-
-        if (deckId && currentImage && currentImage.id) {
-          SketchComparison.saveAttempt(
-            deckId,
-            currentImage.id,
-            currentImage.name || currentImage.id,
-            'board',
-            dataUrl
-          ).then(() => {
-            SketchComparison.updateHistoryBadge(deckId, currentImage.id);
-            if (SketchComparison.activeMode === 'split') {
-              SketchComparison.renderSplitView();
-            }
-          }).catch(err => {
-            console.warn('[SketchOverlay] Failed to auto-save board sketch:', err);
-          });
-        }
+      if (SketchComparison.currentSketchDataUrl !== dataUrl) {
+        SketchComparison.currentSketchDataUrl = dataUrl;
+        SketchComparison.selectedAttemptIndex = -1;
+        SketchComparison.syncUI();
       }
     }
 
@@ -793,6 +789,9 @@ const SketchComparison = {
       const starIcon = (typeof UI !== 'undefined' && UI.getIconSvg) ? UI.getIconSvg('star', 13, 'history-item-star') : '';
       const hasCurrent = Boolean(this.currentSketchDataUrl);
       const currentThumb = this.currentSketchDataUrl;
+      const trashSvg = (typeof UI !== 'undefined' && UI.getIconSvg)
+        ? UI.getIconSvg('trash', 11)
+        : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>';
 
       listHtml += `
         <div class="history-list-item ${isTodaySelected ? 'active' : ''}" data-idx="-1" role="listitem" tabindex="0" title="Current / Today's Sketch">
@@ -806,6 +805,11 @@ const SketchComparison = {
             </div>
             <div class="history-item-date">${hasCurrent ? 'Loaded sketch' : 'Awaiting sketch'}</div>
           </div>
+          ${hasCurrent ? `
+            <button type="button" class="btn-history-item-delete" data-del-idx="-1" title="Remove current sketch" aria-label="Remove current sketch">
+              ${trashSvg}
+            </button>
+          ` : ''}
         </div>
       `;
 
@@ -828,6 +832,9 @@ const SketchComparison = {
                 </div>
                 <div class="history-item-date">${UI._esc(att.date || '')}</div>
               </div>
+              <button type="button" class="btn-history-item-delete" data-del-idx="${idx}" title="Delete Attempt #${idx + 1}" aria-label="Delete Attempt #${idx + 1}">
+                ${trashSvg}
+              </button>
             </div>
           `;
         });
@@ -842,10 +849,24 @@ const SketchComparison = {
       listContainer.innerHTML = listHtml;
 
       listContainer.querySelectorAll('.history-list-item').forEach(item => {
-        item.addEventListener('click', () => {
+        item.addEventListener('click', (e) => {
+          if (e.target.closest('.btn-history-item-delete')) return;
           this.selectedAttemptIndex = parseInt(item.dataset.idx, 10);
           this.renderSplitView();
           if (typeof SoundFX !== 'undefined' && SoundFX.click) SoundFX.click();
+        });
+      });
+
+      listContainer.querySelectorAll('.btn-history-item-delete').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const delIdx = parseInt(btn.dataset.delIdx, 10);
+          if (delIdx >= 0) {
+            this.deleteAttempt(deckId, imageId, delIdx);
+          } else if (delIdx === -1) {
+            this.deleteCurrentSketch(deckId, imageId);
+          }
         });
       });
     }
@@ -919,6 +940,12 @@ const SketchComparison = {
       if (splitTag) splitTag.innerHTML = `${(typeof UI !== 'undefined' && UI.getIconSvg) ? UI.getIconSvg('pencil', 12) : ''} Your Sketch`;
       if (splitDateBadge) splitDateBadge.textContent = 'Awaiting Sketch';
     }
+
+    const splitDeleteBtn = document.getElementById('btn-split-delete-sketch');
+    if (splitDeleteBtn) {
+      const canDelete = (this.selectedAttemptIndex >= 0 && attempts[this.selectedAttemptIndex]) || Boolean(this.currentSketchDataUrl);
+      splitDeleteBtn.classList.toggle('hidden', !canDelete);
+    }
   },
 
   syncUI() {
@@ -948,6 +975,15 @@ const SketchComparison = {
     if (!dataUrl || !imageId) return null;
     try {
       const card = CardManager.getCard(deckId, imageId) || { imageId };
+      const attempts = Array.isArray(card.attempts) ? card.attempts : [];
+
+      // Deduplication check: if card.attempts already contains an attempt with matching sketchUrl or identical dataUrl, return existing
+      const existing = attempts.find(a => a && a.sketchUrl && (
+        a.sketchUrl === dataUrl ||
+        (typeof dataUrl === 'string' && dataUrl.startsWith('/api/sketch') && a.sketchUrl.endsWith(dataUrl))
+      ));
+      if (existing) return existing;
+
       let sketchUrl = dataUrl;
       if (typeof sketchUrl === 'string' && sketchUrl.startsWith('data:image/')) {
         try {
@@ -960,6 +996,8 @@ const SketchComparison = {
             const json = await res.json();
             if (json && json.sketchUrl) {
               sketchUrl = json.sketchUrl;
+              const existingResolved = attempts.find(a => a && a.sketchUrl === sketchUrl);
+              if (existingResolved) return existingResolved;
             }
           }
         } catch (err) {
@@ -985,6 +1023,47 @@ const SketchComparison = {
       console.warn('[SketchComparison] Could not save sketch to disk:', err.message);
     }
     return null;
+  },
+
+  async deleteAttempt(deckId, imageId, indexOrId) {
+    if (!deckId || !imageId) return;
+    try {
+      CardManager.deleteAttempt(deckId, imageId, indexOrId);
+      const attempts = CardManager.getAttempts(deckId, imageId);
+      if (typeof indexOrId === 'number') {
+        if (this.selectedAttemptIndex === indexOrId) {
+          this.selectedAttemptIndex = -1; // Fall back to current/today
+        } else if (this.selectedAttemptIndex > indexOrId) {
+          this.selectedAttemptIndex--;
+        }
+      }
+      if (this.selectedAttemptIndex >= attempts.length) {
+        this.selectedAttemptIndex = attempts.length - 1;
+      }
+      this.updateHistoryBadge(deckId, imageId);
+      this.renderSplitView();
+      if (typeof SoundFX !== 'undefined' && SoundFX.click) SoundFX.click();
+      if (typeof UI !== 'undefined' && UI.showToast) {
+        UI.showToast('Sketch attempt deleted', 'trash');
+      }
+    } catch (err) {
+      console.warn('[SketchComparison] Failed to delete attempt:', err);
+    }
+  },
+
+  deleteCurrentSketch(deckId, imageId) {
+    this.currentSketchDataUrl = null;
+    this.selectedAttemptIndex = -1;
+    if (typeof SketchOverlay !== 'undefined') {
+      SketchOverlay.clear();
+    }
+    this.updateHistoryBadge(deckId, imageId);
+    this.renderSplitView();
+    this.syncUI();
+    if (typeof SoundFX !== 'undefined' && SoundFX.click) SoundFX.click();
+    if (typeof UI !== 'undefined' && UI.showToast) {
+      UI.showToast('Current sketch cleared', 'trash');
+    }
   },
 
   bindEvents() {
@@ -1054,6 +1133,25 @@ const SketchComparison = {
 
     const closeSplitBtn = document.getElementById('btn-close-split-view');
     if (closeSplitBtn) closeSplitBtn.addEventListener('click', () => this.setMode('single'));
+
+    const splitDeleteBtn = document.getElementById('btn-split-delete-sketch');
+    if (splitDeleteBtn) {
+      splitDeleteBtn.addEventListener('click', () => {
+        const deckId = (typeof SessionManager !== 'undefined' && SessionManager.deckId)
+          || (typeof UI !== 'undefined' && UI.currentDeckId)
+          || (typeof BoardManager !== 'undefined' && BoardManager.activeDeckId);
+        const currentImage = (typeof SessionManager !== 'undefined' && SessionManager.currentImage)
+          || (typeof BoardManager !== 'undefined' && BoardManager.selectedRef)
+          || (typeof UI !== 'undefined' && UI.boardState && UI.boardState.selectedRef);
+        if (!deckId || !currentImage) return;
+
+        if (this.selectedAttemptIndex >= 0) {
+          this.deleteAttempt(deckId, currentImage.id, this.selectedAttemptIndex);
+        } else if (this.currentSketchDataUrl) {
+          this.deleteCurrentSketch(deckId, currentImage.id);
+        }
+      });
+    }
 
     // History button in toolbar and session history pill
     const historyToolbarBtn = document.getElementById('btn-art-history');
