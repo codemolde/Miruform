@@ -54,8 +54,8 @@ const PiPCanvasStreamer = {
       if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
           title: SessionManager.currentImage ? SessionManager.currentImage.name : 'Drawing Reference',
-          artist: 'Art Practice • macOS Always-on-Top PiP',
-          album: 'ArtPractice Spaced Repetition'
+          artist: 'Miruform • macOS Always-on-Top PiP',
+          album: 'Miruform Spaced Repetition'
         });
         try {
           navigator.mediaSession.setActionHandler('nexttrack', () => UI.showNextImage());

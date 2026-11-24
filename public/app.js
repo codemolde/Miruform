@@ -1,5 +1,5 @@
 /* ============================================
-   Art Practice Reference — App Bootstrap
+   Miruform — App Bootstrap
    ============================================ */
 
 // Expose modules globally for cross-window PiP resolution

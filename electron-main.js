@@ -1,5 +1,5 @@
 // ============================================================
-// Art Practice Reference Studio — Electron Main Process
+// Miruform — Electron Main Process
 // ============================================================
 
 const fs = require('fs');
@@ -153,7 +153,20 @@ function isDestinationFileValid(destPath, srcStat, srcPath) {
  */
 function migrateLegacyRepoUserdata(options = {}) {
   const logger = options.logger || console;
-  const legacyDir = options.legacyDir || path.join(__dirname, 'userdata');
+  let legacyDir = options.legacyDir;
+  if (!legacyDir) {
+    const localDir = path.join(__dirname, 'userdata');
+    if (isElectron && typeof app.getPath === 'function') {
+      const oldAppUserData = path.join(app.getPath('appData'), 'art-practice-reference', 'userdata');
+      if (!fs.existsSync(localDir) && fs.existsSync(oldAppUserData)) {
+        legacyDir = oldAppUserData;
+      } else {
+        legacyDir = localDir;
+      }
+    } else {
+      legacyDir = localDir;
+    }
+  }
   const targetDir = options.targetDir || process.env.USER_DATA_DIR;
 
   if (!targetDir) {
@@ -380,6 +393,7 @@ function getState(win) {
       ghost: false,
       originalOpacity: 1.0,
       ghostOpacity: GHOST_MODE_OPACITY,
+      isSessionActive: null,
       get isGhostMode() { return this.ghost; },
       set isGhostMode(v) { this.ghost = v; }
     };
@@ -399,6 +413,7 @@ function getState(win) {
         ghostTimer: null,
         keepGhost: false,
         restoreOnBlur: false,
+        isSessionActive: null,
         get isGhostMode() { return this.ghost; },
         set isGhostMode(v) { this.ghost = v; }
       };
@@ -432,6 +447,7 @@ function getState(win) {
       ghostTimer: null,
       keepGhost: false,
       restoreOnBlur: false,
+      isSessionActive: null,
       get isGhostMode() { return this.ghost; },
       set isGhostMode(v) { this.ghost = v; }
     };
@@ -713,7 +729,7 @@ function setupTray() {
     if (!icon) return;
 
     appTray = new Tray(icon);
-    appTray.setToolTip('Art Practice Reference Studio');
+    appTray.setToolTip('Miruform');
     updateTrayMenu();
   } catch (err) {
     console.warn('[Electron] Failed to initialize tray:', err.message);
@@ -752,6 +768,7 @@ function updateTrayMenu() {
 }
 
 const GHOST_OPACITY_SHORTCUTS = [
+  { key: 'CmdOrCtrl+Shift+G', handler: () => mainWindow && !mainWindow.isDestroyed() && toggleGhostMode(mainWindow, false) },
   { key: 'CmdOrCtrl+Shift+Up', handler: () => mainWindow && !mainWindow.isDestroyed() && adjustWindowOpacity(mainWindow, 0.10) },
   { key: 'CmdOrCtrl+Shift+Down', handler: () => mainWindow && !mainWindow.isDestroyed() && adjustWindowOpacity(mainWindow, -0.10) },
   { key: 'CmdOrCtrl+Shift+]', handler: () => mainWindow && !mainWindow.isDestroyed() && adjustWindowOpacity(mainWindow, 0.10) },
@@ -995,6 +1012,44 @@ function toggleGhostMode(win, targetState) {
     const isLinux = process.platform === 'linux';
 
     if (shouldGhost) {
+      if (typeof targetWin.isMinimized === 'function' && targetWin.isMinimized()) {
+        console.warn('[Electron] Refusing to activate Ghost Mode on a minimized window');
+        return {
+          isElectron: true,
+          isGhostMode: false,
+          isAlwaysOnTop: state.alwaysOnTop,
+          floating: state.floating,
+          error: 'Cannot activate Ghost Mode while window is minimized'
+        };
+      }
+      if (typeof targetWin.isVisible === 'function' && !targetWin.isVisible()) {
+        console.warn('[Electron] Refusing to activate Ghost Mode on a hidden window');
+        return {
+          isElectron: true,
+          isGhostMode: false,
+          isAlwaysOnTop: state.alwaysOnTop,
+          floating: state.floating,
+          error: 'Cannot activate Ghost Mode while window is hidden'
+        };
+      }
+      if (state.isSessionActive === false && !state.floating) {
+        console.warn('[Electron] Refusing to activate Ghost Mode: no active reference session');
+        if (targetWin.webContents && !targetWin.webContents.isDestroyed()) {
+          targetWin.webContents.executeJavaScript(`
+            if (window.UI && typeof window.UI.showToast === 'function') {
+              window.UI.showToast('Ghost Mode is only available while viewing a reference or during a session', 'lightbulb');
+            }
+          `).catch(() => { });
+        }
+        return {
+          isElectron: true,
+          isGhostMode: false,
+          isAlwaysOnTop: state.alwaysOnTop,
+          floating: state.floating,
+          error: 'Ghost Mode is only available while viewing a reference or during a session'
+        };
+      }
+
       // 1. Capture original opacity only when transitioning from non-ghost mode
       // (prevents repeated toggles from overwriting saved original opacity)
       if (!state.ghost) {
@@ -1214,7 +1269,7 @@ function createMainWindow(port) {
     minWidth: 320,
     minHeight: 280,
     backgroundColor: '#121212',
-    title: 'Art Practice Reference Studio',
+    title: 'Miruform',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 14 },
     show: false,
@@ -1251,7 +1306,7 @@ function createMainWindow(port) {
           minHeight: 240,
           backgroundColor: '#121212',
           alwaysOnTop: true,
-          title: 'Reference PiP — Art Practice',
+          title: 'Reference PiP — Miruform',
           titleBarStyle: process.platform === 'darwin' ? 'hidden' : 'default',
           trafficLightPosition: { x: 10, y: 10 },
           webPreferences: {
@@ -1393,7 +1448,7 @@ function setupApplicationMenu() {
 
   const template = [
     ...(isMac ? [{
-      label: app?.name || 'Art Practice Studio',
+      label: app?.name || 'Miruform',
       submenu: [
         { role: 'about' },
         { type: 'separator' },
@@ -1451,13 +1506,23 @@ function setupApplicationMenu() {
         {
           id: 'menu-ghost-mode',
           label: 'Ghost Mode (Click-Through Overlay)',
+          accelerator: 'CmdOrCtrl+Shift+G',
           type: 'checkbox',
           checked: false,
           click: () => {
             if (mainWindow && !mainWindow.isDestroyed()) {
-              const res = toggleGhostMode(mainWindow);
-              const ghostMenuItem = Menu?.getApplicationMenu?.()?.getMenuItemById('menu-ghost-mode');
-              if (ghostMenuItem) ghostMenuItem.checked = Boolean(res?.isGhostMode);
+              const state = getState(mainWindow);
+              if (state.ghost) {
+                // If ghost mode is active, allow exiting immediately
+                const res = toggleGhostMode(mainWindow, false);
+                const ghostMenuItem = Menu?.getApplicationMenu?.()?.getMenuItemById('menu-ghost-mode');
+                if (ghostMenuItem) ghostMenuItem.checked = Boolean(res?.isGhostMode);
+              } else {
+                // If ghost mode is off, route to renderer to validate active reference session
+                if (mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+                  mainWindow.webContents.send('shortcut:action', 'toggle-ghost-mode');
+                }
+              }
             }
           }
         },
@@ -1823,6 +1888,19 @@ if (isElectron && ipcMain) {
     return getRestoreGhostOnBlur(win || mainWindow);
   });
 
+  ipcMain.on('window:session-state', (event, data) => {
+    if (!isTrustedIpcSender(event, serverPort)) {
+      return;
+    }
+    const win = (event && event.sender && typeof BrowserWindow.fromWebContents === 'function')
+      ? BrowserWindow.fromWebContents(event.sender)
+      : mainWindow;
+    if (win && !win.isDestroyed()) {
+      const state = getState(win);
+      state.isSessionActive = Boolean(data && data.isViewing);
+    }
+  });
+
   ipcMain.on('set-ignore-mouse-events', (event, ignore, options) => {
     if (!isTrustedIpcSender(event, serverPort)) {
       console.warn('[Security] Blocked unauthorized set-ignore-mouse-events');
@@ -1931,16 +2009,8 @@ if (isElectron && app) {
         });
       }
 
-      // Register global shortcuts: keep ONLY CmdOrCtrl+Shift+G
-      if (globalShortcut && typeof globalShortcut.register === 'function') {
-        try {
-          globalShortcut.register('CmdOrCtrl+Shift+G', () => {
-            if (mainWindow && !mainWindow.isDestroyed()) toggleGhostMode(mainWindow);
-          });
-        } catch (err) {
-          console.warn('[Electron] Failed to register global shortcut CmdOrCtrl+Shift+G:', err);
-        }
-      }
+      // Application Menu accelerator handles CmdOrCtrl+Shift+G while focused;
+      // dynamic global shortcut is registered only while Ghost Mode is active so Finder/other apps are never hijacked.
 
       const { server, port } = await initializeServer();
       serverInstance = server;

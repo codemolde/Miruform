@@ -29,6 +29,8 @@ extensions/
 # Runtime and local user data
 userdata/
 *.local
+*backup*.json
+backup.json
 
 # Environment variables
 .env

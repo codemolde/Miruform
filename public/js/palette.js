@@ -686,8 +686,8 @@ function binPoints(points, binSize = 4) {
  * Line 4: #
  * Subsequent lines: <R>\t<G>\t<B>\t<name> (tab-separated RGB + name)
  */
-function exportToGpl(colors, paletteName = 'Art Practice Palette', columns = 4) {
-  const safeName = (paletteName || 'Art Practice Palette').replace(/[\r\n]/g, ' ').trim();
+function exportToGpl(colors, paletteName = 'Miruform Palette', columns = 4) {
+  const safeName = (paletteName || 'Miruform Palette').replace(/[\r\n]/g, ' ').trim();
   const safeCols = Math.max(1, parseInt(columns, 10) || 4);
   const lines = [
     'GIMP Palette',
@@ -798,7 +798,7 @@ function parseGplPalette(gplText) {
 /**
  * Export colors to JSON containing hex, rgb, lab, and L*
  */
-function exportToJson(colors, paletteName = 'Art Practice Palette', options = {}) {
+function exportToJson(colors, paletteName = 'Miruform Palette', options = {}) {
   if (!colors || colors.length === 0) {
     return options.asObject
       ? JSON.stringify({ name: paletteName, colors: [] }, null, 2)
@@ -1368,14 +1368,20 @@ const ColorPaletteManager = {
 
   onImageLoaded(imgEl) {
     this.dominantColors = [];
+    this.gamutMaskVertices = [];
+    this.hideLoupe();
+
+    // Defer heavy canvas rasterization & CIELAB clustering unless Palette HUD/Eyedropper is actually open
+    if (!this.hudOpen && !this.eyedropperActive && !this.valueMapOverlayActive) {
+      return;
+    }
+
     this.extractPalette(imgEl);
     this.updateValueMapUI();
-    this.gamutMaskVertices = []; // New image: recompute gamut mask
     this.updateGamutMaskUI();
     if (this.valueMapOverlayActive) {
       this.renderValueMapOverlay();
     }
-    this.hideLoupe();
   },
 
   /**

@@ -4,19 +4,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Art Practice Reference — Artist Study & SRS Drill</title>
+  <title>Miruform — Artist Study & SRS Drill</title>
   <meta name="description"
-    content="Distraction-free art practice and spaced repetition reference tool for artists, gesture sketchers, and figure studies.">
+    content="Miruform — Distraction-free art practice and spaced repetition reference tool for artists, gesture sketchers, and figure studies.">
   <meta name="keywords"
-    content="art practice, reference viewer, gesture drawing, spaced repetition, SM-2, figure drawing, notan, local-first, artist tools, memory drill">
+    content="miruform, art practice, reference viewer, gesture drawing, spaced repetition, SM-2, figure drawing, notan, local-first, artist tools, memory drill">
 
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'">
 
   <!-- Instant Desktop Environment Detection (macOS & Electron) -->
-  <script src="env-detect.js?v=2.5"></script>
+  <script src="env-detect.js?v=2.7"></script>
 
-  <link rel="stylesheet" href="style.css?v=2.5">
+  <link rel="stylesheet" href="style.css?v=2.7">
 
   <!-- SVG Filter Definitions for Notan, Silhouette & Posterization -->
   <svg id="svg-filters" xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden"
@@ -122,7 +122,7 @@
             <span class="brand-sub">STUDIO</span>
           </div>
           <div class="brand-text">
-            <h1>Art Practice</h1>
+            <h1>Miruform</h1>
             <p class="brand-tagline">Visual Library & Reference Drills</p>
           </div>
         </div>
@@ -169,7 +169,7 @@
                 </svg></span> Hotkeys <kbd>?</kbd>
             </button>
           </div>
-          <button type="button" id="btn-starter-decks" class="btn btn-secondary" title="Explore Curated CC0 Starter Decks">
+          <button type="button" id="btn-starter-decks" class="btn btn-secondary" title="Explore Curated Starter Decks (Wikimedia Commons)">
             <span class="btn-icon">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -295,7 +295,7 @@
               d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z" />
           </svg></div>
         <h3>No Decks Found</h3>
-        <p>Create your first reference deck or download a curated public domain starter deck.</p>
+        <p>Create your first reference deck or download a curated starter pack from Wikimedia Commons.</p>
         <div class="empty-state-buttons" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
           <button id="btn-empty-new-deck" class="btn btn-primary btn-large">+ Create New Deck</button>
           <button type="button" id="btn-empty-starter-decks" class="btn btn-secondary btn-large">
@@ -687,8 +687,8 @@
               <input type="text" id="input-board-search" class="board-search-input" placeholder="Search references or tags..." autocomplete="off" aria-label="Search references or tags">
               <button type="button" id="btn-board-search-clear" class="btn-board-search-clear hidden" title="Clear search" aria-label="Clear search">✕</button>
             </div>
-            <div class="board-tags-bar" id="board-tags-bar" role="tablist" aria-label="Board Tag Filter">
-              <!-- Dynamically populated: All Tags chip + active deck's tags -->
+            <div class="board-tags-bar" id="board-tags-bar" role="region" aria-label="Board Tag Filter">
+              <!-- Dynamically populated: Tag dropdown menu -->
             </div>
           </div>
           <div class="board-filter-right">
@@ -2616,7 +2616,7 @@
             </svg>
           </button>
         </div>
-        <p class="modal-subtext">Verified CC0 &amp; Public Domain museum reference collections. One-click automated download directly into your studio library.</p>
+        <p class="modal-subtext">Curated reference packs from Wikimedia Commons with complete TASL attribution (CC BY-SA 4.0, CC BY 3.0/2.0). One-click automated download directly into your studio library.</p>
 
         <div id="starter-decks-list" class="starter-decks-list">
           <!-- Rendered dynamically by UI.openStarterDecksModal() -->
@@ -2628,7 +2628,7 @@
               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
-            <span>Automated copyright verification: 100% CC0 Public Domain references from museum collections (The Met, Cleveland Museum of Art). Commercial &amp; study use permitted.</span>
+            <span>All packs sourced from Wikimedia Commons with complete TASL attribution (CC BY-SA 4.0 / CC BY). Attribution metadata included with every pack for study and art practice.</span>
           </div>
           <button type="button" id="btn-close-starter-decks" class="btn btn-ghost">Close</button>
         </div>
@@ -2637,29 +2637,29 @@
 
   </div>
 
-  <!-- Native Video Picture-in-Picture Streamer (for Safari / browsers without Document PiP) -->
+    <!-- Native Video Picture-in-Picture Streamer (for Safari / browsers without Document PiP) -->
   <video id="safari-pip-video" muted playsinline
     style="position:fixed;top:-9999px;left:-9999px;width:720px;height:840px;pointer-events:none;opacity:0;"></video>
   <canvas id="safari-pip-canvas" width="720" height="840" style="display:none;"></canvas>
 
-  <script src="js/core/pip-state.js?v=2.5"></script>
-  <script src="js/palette.js?v=2.5"></script>
-  <script src="js/core/sound.js?v=2.5"></script>
-  <script src="js/core/utils.js?v=2.5"></script>
-  <script src="js/core/storage.js?v=2.5"></script>
-  <script src="js/srs/cards.js?v=2.5"></script>
-  <script src="js/srs/session.js?v=2.5"></script>
-  <script src="js/board/board.js?v=2.5"></script>
-  <script src="js/srs/drill.js?v=2.5"></script>
-  <script src="js/optics/render-canvas.js?v=2.5"></script>
-  <script src="js/optics/toolbox.js?v=2.5"></script>
-  <script src="js/optics/sketch.js?v=2.5"></script>
-  <script src="js/optics/crop.js?v=2.5"></script>
-  <script src="js/optics/plumb.js?v=2.5"></script>
-  <script src="js/optics/pip-streamer.js?v=2.5"></script>
-  <script src="js/extensions/extension-host.js?v=2.5"></script>
-  <script src="js/ui/ui.js?v=2.5"></script>
-  <script src="app.js?v=2.5"></script>
+  <script src="js/core/pip-state.js?v=2.7"></script>
+  <script src="js/palette.js?v=2.7"></script>
+  <script src="js/core/sound.js?v=2.7"></script>
+  <script src="js/core/utils.js?v=2.7"></script>
+  <script src="js/core/storage.js?v=2.7"></script>
+  <script src="js/srs/cards.js?v=2.7"></script>
+  <script src="js/srs/session.js?v=2.7"></script>
+  <script src="js/board/board.js?v=2.7"></script>
+  <script src="js/srs/drill.js?v=2.7"></script>
+  <script src="js/optics/render-canvas.js?v=2.7"></script>
+  <script src="js/optics/toolbox.js?v=2.7"></script>
+  <script src="js/optics/sketch.js?v=2.7"></script>
+  <script src="js/optics/crop.js?v=2.7"></script>
+  <script src="js/optics/plumb.js?v=2.7"></script>
+  <script src="js/optics/pip-streamer.js?v=2.7"></script>
+  <script src="js/extensions/extension-host.js?v=2.7"></script>
+  <script src="js/ui/ui.js?v=2.7"></script>
+  <script src="app.js?v=2.7"></script>
 </body>
 
 </html>

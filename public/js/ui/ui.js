@@ -252,6 +252,7 @@ const UI = {
     if (btnCloseStarterDecksX) {
       btnCloseStarterDecksX.addEventListener('click', () => this.closeStarterDecksModal());
     }
+
     document.getElementById('btn-open-wallpaper').addEventListener('click', () => this.openWallpaperModal());
     document.getElementById('btn-detail-wallpaper').addEventListener('click', () => this.openWallpaperModal());
     document.getElementById('btn-open-shortcuts').addEventListener('click', () => this.openShortcutsModal());
@@ -324,6 +325,11 @@ const UI = {
     }
 
     if (boardTagsBar) {
+      boardTagsBar.addEventListener('change', (e) => {
+        if (e.target && e.target.id === 'board-tag-select') {
+          this.setBoardTagFilter(e.target.value);
+        }
+      });
       boardTagsBar.addEventListener('click', (e) => {
         const chip = e.target.closest('.board-tag-chip');
         if (!chip) return;
@@ -886,6 +892,9 @@ const UI = {
 
     // Side tool dock auto-hide proximity (Mac dock behavior)
     this.bindSideDockEdgeAutoReveal(document);
+
+    // Sync reference viewing state to Electron
+    this.syncSessionStateToElectron();
   },
 
   _globalShortcutUnsubscribe: null,
@@ -1180,7 +1189,7 @@ const UI = {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `art-practice-backup-${localDateStr()}.json`;
+      a.download = `miruform-backup-${localDateStr()}.json`;
       a.click();
       URL.revokeObjectURL(url);
       statusEl.textContent = 'Backup file downloaded successfully!';
@@ -1338,23 +1347,11 @@ const UI = {
       return;
     }
 
-    const installedDecks = (typeof DeckManager !== 'undefined' && Array.isArray(DeckManager.decks)) ? DeckManager.decks : [];
-
     listEl.innerHTML = decks.map(deck => {
-      const existing = installedDecks.find(d =>
-        (d.name && d.name.toLowerCase() === deck.title.toLowerCase()) ||
-        (d.folderPath && d.folderPath.includes(deck.id))
-      );
-      const isInstalled = Boolean(existing || deck.installed);
-
-      const previewHtml = Array.isArray(deck.previewImages) && deck.previewImages.length > 0
-        ? `<div class="starter-deck-preview-strip">
-            ${deck.previewImages.slice(0, 4).map(url => {
-              const proxiedUrl = `/api/starter-deck/preview?url=${encodeURIComponent(url)}`;
-              return `<img src="${this._esc(proxiedUrl)}" class="starter-deck-thumb" alt="Preview" loading="lazy">`;
-            }).join('')}
-          </div>`
-        : '';
+      const isInstalled = Boolean(deck.installed);
+      const folderName = deck.folderName || deck.id;
+      const installPath = deck.installPath || '';
+      const locationVal = deck.installPath || deck.defaultInstallPath || '';
 
       const tagsHtml = Array.isArray(deck.tags) && deck.tags.length > 0
         ? `<div class="starter-deck-tags">
@@ -1362,59 +1359,78 @@ const UI = {
           </div>`
         : '';
 
+      const sizeStr = deck.sizeFormatted || (deck.size ? `${Math.round(deck.size / 1024 / 1024)} MB` : '');
+
+      const cardCount = (typeof deck.cardCount === 'number' && deck.cardCount > 0)
+        ? deck.cardCount
+        : (deck.id === 'portraits' ? 64 : (deck.id === 'poses' ? 41 : (Array.isArray(deck.cards) ? deck.cards.length : 0)));
+
       return `
-        <div class="starter-deck-card" data-deck-id="${this._esc(deck.id)}">
+        <div class="starter-deck-card" data-pack-id="${this._esc(deck.id)}">
           <div class="starter-deck-header">
             <div class="starter-deck-title-group">
               <h3 class="starter-deck-title">${this._esc(deck.title)}</h3>
               <div class="starter-deck-meta">
-                <span class="starter-deck-badge">${deck.cardCount || 75} References</span>
+                <span class="starter-deck-badge">${cardCount} References</span>
+                ${sizeStr ? `<span class="starter-deck-badge">${this._esc(sizeStr)}</span>` : ''}
+                <span class="starter-deck-badge" style="color: #60a5fa; border-color: rgba(96, 165, 250, 0.3); background: rgba(96, 165, 250, 0.08);" title="${this._esc(deck.licenseNotice || 'Licensed under Creative Commons with TASL attribution')}">
+                  ${this._esc(deck.license || 'CC BY-SA 4.0 / Wikimedia')}
+                </span>
                 <span class="starter-deck-badge starter-deck-badge-pd">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <polyline points="20 6 9 17 4 12" />
-                  </svg> CC0 Public Domain
+                  </svg> SHA-256 Verified
                 </span>
-                <span style="font-size: 11px; color: var(--text-muted);">${this._esc(deck.category || 'Study Collection')}</span>
+                <span style="font-size: 11px; color: var(--text-muted);">${this._esc(deck.category || 'Reference Pack')}</span>
               </div>
             </div>
           </div>
           <p class="starter-deck-desc">${this._esc(deck.description)}</p>
-          ${previewHtml}
           ${tagsHtml}
-          ${!isInstalled ? `
-            <div class="starter-deck-location-row">
-              <label for="starter-dest-${this._esc(deck.id)}" class="starter-deck-location-label">Save To Folder:</label>
-              <div class="starter-deck-location-group">
-                <input type="text" id="starter-dest-${this._esc(deck.id)}" class="starter-deck-location-input" placeholder="Click Choose Folder to select destination on disk..." spellcheck="false" value="">
-                <button type="button" class="btn btn-secondary btn-starter-browse-folder" data-deck-id="${this._esc(deck.id)}">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;" aria-hidden="true">
-                    <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
-                  </svg>Choose Folder…
-                </button>
-              </div>
+          <div class="starter-deck-location-row">
+            <label class="starter-deck-location-label" for="dest-input-${this._esc(deck.id)}">Install Folder Location:</label>
+            <div class="starter-deck-location-group">
+              <input type="text"
+                class="starter-deck-location-input"
+                id="dest-input-${this._esc(deck.id)}"
+                data-pack-id="${this._esc(deck.id)}"
+                data-folder-name="${this._esc(folderName)}"
+                value="${this._esc(locationVal)}"
+                placeholder="Choose destination folder..."
+                ${isInstalled ? 'readonly' : ''} />
+              <button type="button"
+                class="btn btn-secondary btn-starter-browse-folder btn-browse-pack-dest"
+                data-pack-id="${this._esc(deck.id)}"
+                data-folder-name="${this._esc(folderName)}"
+                ${isInstalled ? 'disabled' : ''}>
+                Browse...
+              </button>
             </div>
-          ` : ''}
+          </div>
           <div class="starter-deck-progress-box hidden" id="progress-box-${this._esc(deck.id)}">
             <div class="starter-deck-progress-bar">
               <div class="starter-deck-progress-fill" id="progress-fill-${this._esc(deck.id)}"></div>
             </div>
             <div class="starter-deck-progress-text">
-              <span id="progress-status-${this._esc(deck.id)}">Downloading references...</span>
+              <span id="progress-status-${this._esc(deck.id)}">Starting download...</span>
               <span id="progress-percent-${this._esc(deck.id)}">0%</span>
             </div>
           </div>
-          <div class="starter-deck-card-actions">
-            ${isInstalled && existing ? `
-              <button type="button" class="btn btn-secondary btn-open-starter-deck" data-installed-id="${this._esc(existing.id)}">
-                <span>✓ Installed • Open Deck</span>
+          <div class="starter-deck-installed-msg ${isInstalled ? '' : 'hidden'}" id="installed-msg-${this._esc(deck.id)}">
+            Pack installed at <code>${this._esc(installPath)}</code>. To use it, click New Deck and choose the ${this._esc(folderName)} folder.
+          </div>
+          <div class="starter-deck-card-actions" id="actions-${this._esc(deck.id)}">
+            ${isInstalled ? `
+              <button type="button" class="btn btn-secondary btn-create-deck-from-pack" data-pack-id="${this._esc(deck.id)}" data-folder="${this._esc(installPath)}" data-name="${this._esc(deck.title)}">
+                <span>✓ Installed • Click New Deck to Use</span>
               </button>
             ` : `
-              <button type="button" class="btn btn-primary btn-install-starter-deck" data-deck-id="${this._esc(deck.id)}">
+              <button type="button" class="btn btn-primary btn-install-starter-pack" data-pack-id="${this._esc(deck.id)}">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;" aria-hidden="true">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>Download Deck (${deck.cardCount || 75} Cards)
+                </svg>Download pack
               </button>
             `}
           </div>
@@ -1422,85 +1438,73 @@ const UI = {
       `;
     }).join('');
 
-    listEl.querySelectorAll('.btn-starter-browse-folder').forEach(btn => {
+    listEl.querySelectorAll('.btn-browse-pack-dest').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const deckId = btn.dataset.deckId;
-        const inputEl = document.getElementById(`starter-dest-${deckId}`);
+        const packId = btn.dataset.packId;
+        const folderName = btn.dataset.folderName;
+        const inputEl = document.getElementById(`dest-input-${packId}`);
+        if (!inputEl) return;
+
+        let selectedDir = null;
         if (window.electronAPI && typeof window.electronAPI.pickDirectory === 'function') {
           try {
             const res = await window.electronAPI.pickDirectory();
-            if (!res.canceled && res.path && inputEl) {
-              inputEl.value = res.path;
+            if (res && !res.canceled && res.path) {
+              selectedDir = res.path;
             }
-            return;
-          } catch (err) {
-            console.warn('[StarterDeck] Native directory picker error:', err);
+          } catch (e) {
+            console.warn('pickDirectory failed:', e);
           }
+        } else {
+          selectedDir = window.prompt('Enter folder path to install starter pack:', inputEl.value || '');
         }
-        // Fallback for browser mode
-        this.folderBrowserTargetInputId = `starter-dest-${deckId}`;
-        this.openFolderBrowser();
+
+        if (selectedDir && typeof selectedDir === 'string') {
+          selectedDir = selectedDir.trim();
+          const sep = selectedDir.includes('\\') ? '\\' : '/';
+          const cleanDir = selectedDir.replace(/[\\/]+$/, '');
+          const base = cleanDir.split(/[\\/]/).pop();
+          const finalPath = (base && base.toLowerCase() === folderName.toLowerCase())
+            ? cleanDir
+            : `${cleanDir}${sep}${folderName}`;
+
+          inputEl.value = finalPath;
+        }
       });
     });
 
-    listEl.querySelectorAll('.btn-install-starter-deck').forEach(btn => {
+    listEl.querySelectorAll('.btn-install-starter-pack').forEach(btn => {
       btn.addEventListener('click', () => {
-        const deckId = btn.dataset.deckId;
-        this.installStarterDeck(deckId, btn);
+        const packId = btn.dataset.packId;
+        this.installStarterPack(packId, btn);
       });
     });
 
-    listEl.querySelectorAll('.btn-open-starter-deck').forEach(btn => {
+    listEl.querySelectorAll('.btn-create-deck-from-pack').forEach(btn => {
       btn.addEventListener('click', () => {
-        const installedId = btn.dataset.installedId;
+        const folder = btn.dataset.folder;
+        const name = btn.dataset.name;
         this.closeStarterDecksModal();
-        if (installedId) {
-          this.openDeckDetail(installedId);
-        }
+        this.openDeckModal(null, folder ? { name, folder } : null);
       });
     });
   },
 
-  async installStarterDeck(deckId, btnEl) {
-    if (!deckId) return;
+  async installStarterPack(packId, btnEl) {
+    if (!packId) return;
 
-    const destInput = document.getElementById(`starter-dest-${deckId}`);
-    let chosenFolder = destInput ? destInput.value.trim() : '';
-
-    // If no folder path has been chosen yet, actively prompt the user for the folder location
-    if (!chosenFolder) {
-      if (window.electronAPI && typeof window.electronAPI.pickDirectory === 'function') {
-        try {
-          const res = await window.electronAPI.pickDirectory();
-          if (res.canceled || !res.path) {
-            return; // User canceled dialog
-          }
-          chosenFolder = res.path;
-          if (destInput) destInput.value = chosenFolder;
-        } catch (pickErr) {
-          console.warn('[StarterDeck] Directory picker error:', pickErr);
-        }
-      } else {
-        this.folderBrowserTargetInputId = `starter-dest-${deckId}`;
-        this.openFolderBrowser();
-        this.showToast('Please select a folder location for the new deck', 'info');
-        return;
-      }
-    }
-
-    if (!chosenFolder) {
-      this.showToast('Please select a folder location for the new deck', 'alert');
-      return;
-    }
-
-    const progressBox = document.getElementById(`progress-box-${deckId}`);
-    const progressFill = document.getElementById(`progress-fill-${deckId}`);
-    const progressStatus = document.getElementById(`progress-status-${deckId}`);
-    const progressPercent = document.getElementById(`progress-percent-${deckId}`);
+    const progressBox = document.getElementById(`progress-box-${packId}`);
+    const progressFill = document.getElementById(`progress-fill-${packId}`);
+    const progressStatus = document.getElementById(`progress-status-${packId}`);
+    const progressPercent = document.getElementById(`progress-percent-${packId}`);
+    const installedMsg = document.getElementById(`installed-msg-${packId}`);
+    const actionsEl = document.getElementById(`actions-${packId}`);
+    const destInput = document.getElementById(`dest-input-${packId}`);
+    const destinationPath = (destInput && destInput.value.trim()) ? destInput.value.trim() : undefined;
 
     if (btnEl) {
       btnEl.disabled = true;
-      btnEl.textContent = 'Downloading...';
+      btnEl.textContent = 'Downloading pack...';
     }
     if (progressBox) progressBox.classList.remove('hidden');
 
@@ -1508,55 +1512,110 @@ const UI = {
       const res = await fetch('/api/starter-deck/install', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          deckId,
-          customFolderPath: chosenFolder
-        })
+        body: JSON.stringify({ packId, deckId: packId, destinationPath })
       });
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || `HTTP ${res.status}`);
+        let errMsg = errJson.error || `HTTP ${res.status}`;
+        if (errMsg.includes('deckId') || errMsg.includes('zero cards')) {
+          errMsg = 'App restart required: Please restart the app (close and re-run) to load the new pack download engine.';
+        }
+        throw new Error(errMsg);
       }
 
       const initData = await res.json();
-      const jobId = initData.jobId;
 
+      // If already installed, avoid duplicate install
+      if (initData.alreadyInstalled) {
+        if (progressBox) progressBox.classList.add('hidden');
+        if (installedMsg) {
+          installedMsg.innerHTML = `${this._esc(initData.message || 'Pack is already installed.')}`;
+          installedMsg.classList.remove('hidden');
+        }
+        if (destInput) {
+          destInput.value = initData.installPath || destInput.value;
+          destInput.setAttribute('readonly', 'readonly');
+        }
+        const browseBtn = document.querySelector(`.btn-browse-pack-dest[data-pack-id="${packId}"]`);
+        if (browseBtn) browseBtn.disabled = true;
+
+        if (actionsEl) {
+          actionsEl.innerHTML = `
+            <button type="button" class="btn btn-secondary btn-create-deck-from-pack"
+              data-pack-id="${this._esc(packId)}"
+              data-folder="${this._esc(initData.installPath || '')}"
+              data-name="${this._esc(initData.title || packId)}">
+              <span>✓ Installed • Click New Deck to Use</span>
+            </button>
+          `;
+          const newBtn = actionsEl.querySelector('.btn-create-deck-from-pack');
+          if (newBtn) {
+            newBtn.addEventListener('click', () => {
+              this.closeStarterDecksModal();
+              this.openDeckModal(null, { name: newBtn.dataset.name, folder: newBtn.dataset.folder });
+            });
+          }
+        }
+        this.showToast(initData.message, 'normal');
+        return;
+      }
+
+      const jobId = initData.jobId;
       const pollInterval = setInterval(async () => {
         try {
           const pollRes = await fetch(`/api/starter-deck/progress?jobId=${encodeURIComponent(jobId)}`);
           if (!pollRes.ok) return;
           const job = await pollRes.json();
 
-          if (progressFill) progressFill.style.width = `${job.percent}%`;
-          if (progressPercent) progressPercent.textContent = `${job.percent}%`;
-          if (progressStatus) progressStatus.textContent = `Downloaded ${job.downloaded} of ${job.total} references...`;
+          const pct = job.percent || 0;
+          if (progressFill) progressFill.style.width = `${pct}%`;
+          if (progressPercent) progressPercent.textContent = `${pct}%`;
+          if (progressStatus) {
+            progressStatus.textContent = job.message || `Downloading... (${pct}%)`;
+          }
 
           if (job.status === 'completed') {
             clearInterval(pollInterval);
-            if (typeof SoundFX !== 'undefined' && SoundFX.success) SoundFX.success();
-            this.showToast('Starter Deck installed: Master Gesture Collection', 'sparkles');
+            if (progressFill) progressFill.style.width = '100%';
+            if (progressPercent) progressPercent.textContent = '100%';
+            if (progressStatus) progressStatus.textContent = 'Download & extraction complete!';
 
-            if (typeof Storage !== 'undefined' && typeof Storage.loadFromDisk === 'function') {
-              await Storage.loadFromDisk();
+            const finalMessage = job.message || `Pack installed at ${job.installPath}. To use it, click New Deck and choose the ${job.folderName} folder.`;
+
+            if (installedMsg) {
+              installedMsg.innerHTML = `Pack installed at <code>${this._esc(job.installPath || '')}</code>. To use it, click New Deck and choose the ${this._esc(job.folderName || 'pack')} folder.`;
+              installedMsg.classList.remove('hidden');
             }
-            if (typeof DeckManager !== 'undefined') DeckManager.init();
-            if (typeof CardManager !== 'undefined') CardManager.init();
-            this.renderDeckList();
 
-            if (btnEl) {
-              btnEl.disabled = false;
-              btnEl.className = 'btn btn-secondary btn-open-starter-deck';
-              btnEl.innerHTML = '<span>✓ Installed • Open Deck</span>';
-              if (job.deck && job.deck.id) {
-                btnEl.dataset.installedId = job.deck.id;
-                btnEl.addEventListener('click', () => {
+            if (destInput) {
+              destInput.value = job.installPath || destInput.value;
+              destInput.setAttribute('readonly', 'readonly');
+            }
+            const browseBtn = document.querySelector(`.btn-browse-pack-dest[data-pack-id="${packId}"]`);
+            if (browseBtn) browseBtn.disabled = true;
+
+            if (actionsEl) {
+              actionsEl.innerHTML = `
+                <button type="button" class="btn btn-secondary btn-create-deck-from-pack"
+                  data-pack-id="${this._esc(packId)}"
+                  data-folder="${this._esc(job.installPath || '')}"
+                  data-name="${this._esc(job.title || packId)}">
+                  <span>✓ Installed • Click New Deck to Use</span>
+                </button>
+              `;
+              const newBtn = actionsEl.querySelector('.btn-create-deck-from-pack');
+              if (newBtn) {
+                newBtn.addEventListener('click', () => {
                   this.closeStarterDecksModal();
-                  this.openDeckDetail(job.deck.id);
-                }, { once: true });
+                  this.openDeckModal(null, { name: newBtn.dataset.name, folder: newBtn.dataset.folder });
+                });
               }
             }
-            if (progressStatus) progressStatus.textContent = `Successfully downloaded ${job.downloaded} references. Ready for practice!`;
+
+            if (typeof SoundFX !== 'undefined' && SoundFX.success) SoundFX.success();
+            this.showToast(finalMessage, 'sparkles');
+
           } else if (job.status === 'failed') {
             clearInterval(pollInterval);
             if (progressStatus) progressStatus.textContent = `Download failed: ${job.error || 'Unknown error'}`;
@@ -1564,24 +1623,25 @@ const UI = {
               btnEl.disabled = false;
               btnEl.textContent = 'Retry Download';
             }
+            this.showToast(`Download failed: ${job.error || 'Unknown error'}`, 'alert');
           }
         } catch (pollErr) {
-          console.warn('[StarterDeck] Error polling progress:', pollErr);
+          console.warn('[StarterPack] Error polling progress:', pollErr);
         }
-      }, 500);
+      }, 400);
 
     } catch (err) {
-      console.error('[StarterDeck] Install error:', err);
+      console.error('[StarterPack] Install error:', err);
       if (progressStatus) progressStatus.textContent = `Error: ${err.message}`;
       if (btnEl) {
         btnEl.disabled = false;
         btnEl.textContent = 'Retry Download';
       }
-      this.showToast(`Starter deck install failed: ${err.message}`, 'alert');
+      this.showToast(`Install failed: ${err.message}`, 'alert');
     }
   },
 
-  // ---- Shortcuts Modal ----
+    // ---- Shortcuts Modal ----
   openShortcutsModal() {
     document.getElementById('modal-shortcuts').classList.remove('hidden');
   },
@@ -2344,10 +2404,32 @@ const UI = {
     });
   },
 
+  syncSessionStateToElectron() {
+    if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.setSessionState === 'function') {
+      const doc = typeof document !== 'undefined' ? document : null;
+      const sessionView = doc ? doc.getElementById('view-session') : null;
+      const isSessionActive = Boolean(sessionView && sessionView.classList.contains('active'));
+      const isBoardStage = Boolean(this.isBoardStageOpen);
+      const isViewing = Boolean(this.isElectronFloating || isSessionActive || isBoardStage || (doc && doc.body && doc.body.classList.contains('in-session')));
+      window.electronAPI.setSessionState(isViewing);
+    }
+  },
+
   async toggleGhostMode(targetState) {
     if (window.electronAPI && typeof window.electronAPI.toggleGhostMode === 'function') {
       try {
         const flag = typeof targetState === 'boolean' ? targetState : !this.isGhostMode;
+        if (flag) {
+          const doc = typeof document !== 'undefined' ? document : null;
+          const sessionView = doc ? doc.getElementById('view-session') : null;
+          const isSessionActive = Boolean(sessionView && sessionView.classList.contains('active'));
+          const isBoardStage = Boolean(this.isBoardStageOpen);
+          const isViewing = Boolean(this.isElectronFloating || isSessionActive || isBoardStage || (doc && doc.body && doc.body.classList.contains('in-session')));
+          if (doc && !isViewing) {
+            this.showToast('Ghost Mode is only available while viewing a reference or during a session', 'lightbulb');
+            return { isElectron: true, isGhostMode: false, error: 'No active reference session' };
+          }
+        }
         const res = await window.electronAPI.toggleGhostMode(flag);
         if (res && res.error) {
           this.showToast(typeof res.error === 'string' ? res.error : 'Could not toggle Ghost Mode', 'alert');
@@ -2611,7 +2693,7 @@ const UI = {
 
     if (mode === 'video') {
       if (title) title.textContent = 'macOS Always-on-Top PiP Active';
-      if (desc) desc.textContent = 'Your reference is pinned at the macOS system level — guaranteed to stay on top of Photoshop, Blender, and all apps.';
+      if (desc) desc.textContent = 'Your reference is pinned at the macOS system level — designed to stay on top of Photoshop, Blender, and other apps.';
       if (switchBtn) {
         switchBtn.classList.remove('hidden');
         switchBtn.innerHTML = `<span>${this.getIconSvg('refresh', 13)}</span> Switch to Detached Window (Clickable Buttons)`;
@@ -3188,16 +3270,24 @@ const UI = {
 
   // ---- View Switching ----
   showView(viewId) {
-    if (viewId !== 'view-session' && this.isPiPActive) {
-      this.closePiP(true);
-    }
-    if (viewId !== 'view-session' && this.isZenMode) {
-      this.setZenMode(false);
+    if (viewId !== 'view-session') {
+      if (this.isPiPActive) {
+        this.closePiP(true);
+      }
+      if (this.isZenMode) {
+        this.setZenMode(false);
+      }
+      const sessionImg = document.getElementById('session-image');
+      if (sessionImg) {
+        if (typeof sessionImg.removeAttribute === 'function') sessionImg.removeAttribute('src');
+        else sessionImg.src = '';
+      }
     }
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     const target = document.getElementById(viewId);
     if (target) target.classList.add('active');
     document.body.classList.toggle('in-session', viewId === 'view-session');
+    this.syncSessionStateToElectron();
   },
 
   // ---- Deck List View ----
@@ -3467,33 +3557,43 @@ const UI = {
     const missingBanner = document.getElementById('deck-folder-missing-banner');
     const missingText = document.getElementById('deck-missing-folder-text');
 
-    // Load folder images
-    try {
-      this.cachedImages = await SessionManager.loadImages(deck.folderPath);
-      this.cachedImagesDeckId = deckId;
+    // Load folder images (re-use fast memory cache if already loaded for this deck)
+    const needsImageLoad = !this.cachedImages || this.cachedImagesDeckId !== deckId || !Array.isArray(this.cachedImages);
+    if (needsImageLoad) {
+      try {
+        this.cachedImages = await SessionManager.loadImages(deck.folderPath);
+        this.cachedImagesDeckId = deckId;
+        if (missingBanner) missingBanner.classList.add('hidden');
+        if (this.boardState) {
+          this.boardState.activeDeckId = deckId;
+          this.boardState.allReferences = this.cachedImages || [];
+        }
+        this.applyBoardFilters();
+        // Automatically migrate legacy path cards to content-hash IDs
+        CardManager.migrateLegacyPathCards(deckId, this.cachedImages);
+      } catch (err) {
+        this.cachedImages = [];
+        this.cachedImagesDeckId = deckId;
+        if (this.boardState) {
+          this.boardState.activeDeckId = deckId;
+          this.boardState.allReferences = [];
+          this.boardState.filteredReferences = [];
+        }
+        if (missingBanner) {
+          if (missingText) {
+            missingText.textContent = `Folder not found: "${this.formatShortPath(deck.folderPath)}". Did you rename or move this folder?`;
+          }
+          missingBanner.classList.remove('hidden');
+        }
+        this.showToast(`Folder load issue: ${err.message}`, 'alert');
+      }
+    } else {
       if (missingBanner) missingBanner.classList.add('hidden');
       if (this.boardState) {
         this.boardState.activeDeckId = deckId;
         this.boardState.allReferences = this.cachedImages || [];
       }
       this.applyBoardFilters();
-      // Automatically migrate legacy path cards to content-hash IDs
-      CardManager.migrateLegacyPathCards(deckId, this.cachedImages);
-    } catch (err) {
-      this.cachedImages = [];
-      this.cachedImagesDeckId = deckId;
-      if (this.boardState) {
-        this.boardState.activeDeckId = deckId;
-        this.boardState.allReferences = [];
-        this.boardState.filteredReferences = [];
-      }
-      if (missingBanner) {
-        if (missingText) {
-          missingText.textContent = `Folder not found: "${this.formatShortPath(deck.folderPath)}". Did you rename or move this folder?`;
-        }
-        missingBanner.classList.remove('hidden');
-      }
-      this.showToast(`Folder load issue: ${err.message}`, 'alert');
     }
 
     this.renderDeckStats();
@@ -3763,25 +3863,32 @@ const UI = {
       }
     });
 
-    const isAllActive = !this.boardState.selectedTag || this.boardState.selectedTag === 'all';
-    let html = `
-      <button type="button" class="board-tag-chip${isAllActive ? ' active' : ''}" data-tag="all" role="tab" aria-selected="${isAllActive}">
-        All Tags <span class="chip-count">(${images.length})</span>
-      </button>
-    `;
-
+    const selectedTag = this.boardState.selectedTag;
+    const isTagFiltered = Boolean(selectedTag && selectedTag !== 'all');
     const sortedTags = Array.from(tagCounts.keys()).sort();
+
+    let optionsHtml = `<option value="all"${!isTagFiltered ? ' selected' : ''}>All Tags (${images.length})</option>`;
     sortedTags.forEach(tag => {
-      const active = this.boardState.selectedTag === tag;
+      const isSelected = selectedTag === tag;
       const count = tagCounts.get(tag);
-      html += `
-        <button type="button" class="board-tag-chip${active ? ' active' : ''}" data-tag="${this._esc(tag)}" role="tab" aria-selected="${active}">
-          #${this._esc(tag)} <span class="chip-count">(${count})</span>
-        </button>
-      `;
+      optionsHtml += `<option value="${this._esc(tag)}"${isSelected ? ' selected' : ''}>#${this._esc(tag)} (${count})</option>`;
     });
 
-    tagsBar.innerHTML = html;
+    tagsBar.innerHTML = `
+      <div class="board-tag-group${isTagFiltered ? ' active' : ''}" id="board-tag-group">
+        <label for="board-tag-select" class="board-tag-label" title="Filter references by tag">Tag:</label>
+        <select id="board-tag-select" class="board-tag-select" aria-label="Filter references by tag">
+          ${optionsHtml}
+        </select>
+      </div>
+    `;
+
+    const selectEl = tagsBar.querySelector('#board-tag-select');
+    if (selectEl) {
+      selectEl.addEventListener('change', (e) => {
+        this.setBoardTagFilter(e.target.value);
+      });
+    }
   },
 
   setBoardTagFilter(tag) {
@@ -3872,54 +3979,78 @@ const UI = {
 
     const selectedRef = this.boardState ? this.boardState.selectedRef : null;
 
-    grid.innerHTML = images.map(img => {
-      const card = deckCards[img.id] || (img.path && deckCards[img.path]);
-      const tags = (card && Array.isArray(card.tags)) ? card.tags : [];
-      const hasCrop = Boolean(card && card.cropImage && card.cropImage.cropUrl);
-      const isSelected = Boolean(selectedRef && (
-        selectedRef.path && img.path ? selectedRef.path === img.path : selectedRef.id === img.id
-      ));
-
-      const imgUrl = (typeof SessionManager !== 'undefined' && SessionManager.getImageUrl)
-        ? SessionManager.getImageUrl(img)
-        : `/api/image?path=${encodeURIComponent(img.path || img.id)}`;
-
-      const tagsHtml = tags.length > 0
-        ? `<div class="board-ref-tags">${tags.map(t => `<span class="board-ref-tag-pill">#${this._esc(t)}</span>`).join('')}</div>`
-        : '';
-
-      const cropBadge = hasCrop
-        ? `<span class="board-ref-focal-badge">Crop</span>`
-        : '';
-
-      return `
-        <div class="board-ref-card${isSelected ? ' selected' : ''}" data-id="${this._esc(img.id)}" data-path="${this._esc(img.path || '')}" tabindex="0" role="button" aria-label="${this._esc(img.name || '')}">
-          <div class="board-ref-thumb-wrap">
-            <img class="board-ref-thumb" src="${this._esc(imgUrl)}" alt="${this._esc(img.name || '')}" loading="lazy" decoding="async" draggable="false">
-            <div class="board-card-fallback hidden" aria-hidden="true">
-              <span class="fallback-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
-              <span class="fallback-text">Unavailable</span>
-            </div>
-            ${cropBadge}
-            <div class="board-card-open-hint" aria-hidden="true">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="15 3 21 3 21 9"/>
-                <polyline points="9 21 3 21 3 15"/>
-                <line x1="21" y1="3" x2="14" y2="10"/>
-                <line x1="3" y1="21" x2="10" y2="14"/>
-              </svg>
-              <span>Open</span>
-            </div>
-          </div>
-          <div class="board-ref-info">
-            <span class="board-ref-title" title="${this._esc(img.name || '')}">${this._esc(img.name || '')}</span>
-            ${tagsHtml}
-          </div>
-        </div>
-      `;
-    }).join('');
+    if (images.length <= 150) {
+      grid.innerHTML = images.map(img => this._buildBoardCardHtml(img, deckCards, selectedRef)).join('');
+    } else {
+      // Chunked progressive rendering for large libraries to prevent UI freeze
+      const initialChunk = images.slice(0, 80);
+      grid.innerHTML = initialChunk.map(img => this._buildBoardCardHtml(img, deckCards, selectedRef)).join('');
+      let offset = 80;
+      const CHUNK = 80;
+      const loadMore = () => {
+        if (offset >= images.length) return;
+        const slice = images.slice(offset, offset + CHUNK);
+        offset += CHUNK;
+        const temp = document.createElement('div');
+        temp.innerHTML = slice.map(img => this._buildBoardCardHtml(img, deckCards, selectedRef)).join('');
+        while (temp.firstChild) {
+          grid.appendChild(temp.firstChild);
+        }
+        if (offset < images.length) {
+          setTimeout(loadMore, 16);
+        }
+      };
+      setTimeout(loadMore, 16);
+    }
 
     this.updateBoardFilterStatus();
+  },
+
+  _buildBoardCardHtml(img, deckCards, selectedRef) {
+    const card = deckCards[img.id] || (img.path && deckCards[img.path]);
+    const tags = (card && Array.isArray(card.tags)) ? card.tags : [];
+    const hasCrop = Boolean(card && card.cropImage && card.cropImage.cropUrl);
+    const isSelected = Boolean(selectedRef && (
+      selectedRef.path && img.path ? selectedRef.path === img.path : selectedRef.id === img.id
+    ));
+
+    const imgUrl = (typeof SessionManager !== 'undefined' && SessionManager.getImageUrl)
+      ? SessionManager.getImageUrl(img)
+      : `/api/image?path=${encodeURIComponent(img.path || img.id)}`;
+
+    const tagsHtml = tags.length > 0
+      ? `<div class="board-ref-tags">${tags.map(t => `<span class="board-ref-tag-pill">#${this._esc(t)}</span>`).join('')}</div>`
+      : '';
+
+    const cropBadge = hasCrop
+      ? `<span class="board-ref-focal-badge">Crop</span>`
+      : '';
+
+    return `
+      <div class="board-ref-card${isSelected ? ' selected' : ''}" data-id="${this._esc(img.id)}" data-path="${this._esc(img.path || '')}" tabindex="0" role="button" aria-label="${this._esc(img.name || '')}">
+        <div class="board-ref-thumb-wrap">
+          <img class="board-ref-thumb" src="${this._esc(imgUrl)}" alt="${this._esc(img.name || '')}" loading="lazy" decoding="async" draggable="false">
+          <div class="board-card-fallback hidden" aria-hidden="true">
+            <span class="fallback-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            <span class="fallback-text">Unavailable</span>
+          </div>
+          ${cropBadge}
+          <div class="board-card-open-hint" aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 3 21 3 21 9"/>
+              <polyline points="9 21 3 21 3 15"/>
+              <line x1="21" y1="3" x2="14" y2="10"/>
+              <line x1="3" y1="21" x2="10" y2="14"/>
+            </svg>
+            <span>Open</span>
+          </div>
+        </div>
+        <div class="board-ref-info">
+          <span class="board-ref-title" title="${this._esc(img.name || '')}">${this._esc(img.name || '')}</span>
+          ${tagsHtml}
+        </div>
+      </div>
+    `;
   },
 
   setBoardGridSize(size) {
@@ -4127,6 +4258,7 @@ const UI = {
 
     this.isBoardStageOpen = true;
     this.sessionSource = 'board';
+    this.syncSessionStateToElectron();
     if (this.boardState) {
       this.boardState.isStageOpen = true;
     }
@@ -4273,8 +4405,8 @@ const UI = {
       try {
         navigator.mediaSession.metadata = new MediaMetadata({
           title: ref.name || 'Reference',
-          artist: 'Art Practice • Reference Board',
-          album: 'ArtPractice Observational Reference'
+          artist: 'Miruform • Reference Board',
+          album: 'Miruform Observational Reference'
         });
       } catch (e) { }
     }
@@ -4417,8 +4549,13 @@ const UI = {
     if (this.isZenMode) this.toggleZenMode(false);
     ArtistToolbox.reset();
 
-    // Clear SessionManager pointer
+    // Clear SessionManager pointer and release high-res GPU texture memory
     SessionManager.currentImage = null;
+    const sessionImg = document.getElementById('session-image');
+    if (sessionImg) {
+      if (typeof sessionImg.removeAttribute === 'function') sessionImg.removeAttribute('src');
+      else sessionImg.src = '';
+    }
 
     // Switch back to Deck Detail on Reference Board tab
     this.showView('view-deck-detail');
@@ -5038,8 +5175,8 @@ const UI = {
       try {
         navigator.mediaSession.metadata = new MediaMetadata({
           title: image.name || `Reference #${SessionManager.imagesShown}`,
-          artist: `Art Practice • #${SessionManager.imagesShown} shown`,
-          album: 'ArtPractice Spaced Repetition'
+          artist: `Miruform • #${SessionManager.imagesShown} shown`,
+          album: 'Miruform Spaced Repetition'
         });
       } catch (e) { }
     }
@@ -5250,8 +5387,15 @@ const UI = {
     TimerManager.stop();
     if (this.isZenMode) this.toggleZenMode(false);
 
-    // Automatically sync SRS database directly to userdata/srs_state.json on disk after every session!
-    await Storage.syncToDisk(true).catch(() => { });
+    // Clear session image src to immediately release high-res GPU texture memory
+    const sessionImg = document.getElementById('session-image');
+    if (sessionImg) {
+      if (typeof sessionImg.removeAttribute === 'function') sessionImg.removeAttribute('src');
+      else sessionImg.src = '';
+    }
+
+    // Asynchronous non-blocking disk sync so navigation transitions immediately
+    Storage.syncToDisk(false).catch(() => { });
 
     this.openDeckDetail(this.currentDeckId);
   },
@@ -5475,7 +5619,7 @@ const UI = {
   },
 
   // ---- Deck Modal ----
-  openDeckModal(editDeckId = null) {
+  openDeckModal(editDeckId = null, prefill = null) {
     const modal = document.getElementById('modal-deck');
     const title = document.getElementById('modal-deck-title');
     const nameInput = document.getElementById('input-deck-name');
@@ -5498,8 +5642,8 @@ const UI = {
       modal.dataset.editId = editDeckId;
     } else {
       title.textContent = 'New Deck';
-      nameInput.value = '';
-      folderInput.value = '';
+      nameInput.value = (prefill && prefill.name) ? prefill.name : '';
+      folderInput.value = (prefill && prefill.folder) ? prefill.folder : '';
       delete modal.dataset.editId;
     }
 

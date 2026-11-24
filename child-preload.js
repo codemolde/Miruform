@@ -1,5 +1,5 @@
 // ============================================================
-// Art Practice Reference Studio — Child / Popup Window Preload
+// Miruform — Child / Popup Window Preload
 // Minimal, unprivileged API surface for internal child windows
 // ============================================================
 

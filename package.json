@@ -1,8 +1,9 @@
 {
-  "name": "art-practice-reference",
+  "name": "miruform",
   "version": "1.0.0",
-  "description": "Local-first art practice reference studio, gesture trainer, and spaced repetition viewer for artists and animators",
+  "description": "Miruform — Local-first reference studio, gesture trainer, and spaced repetition viewer for artists and animators",
   "keywords": [
+    "miruform",
     "art",
     "drawing",
     "art-practice",
@@ -35,8 +36,8 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.codemolde.artpractice",
-    "productName": "Art Practice Studio",
+    "appId": "com.codemolde.miruform",
+    "productName": "Miruform",
     "files": [
       "server.js",
       "electron-main.js",

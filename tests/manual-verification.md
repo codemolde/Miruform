@@ -78,9 +78,9 @@ Status: **MANUAL-NOT-RUN** (Do not mark as passed until manually verified by the
 
 ### Check 8: Eyedropper Accuracy Against Photoshop Swatch (MANUAL-NOT-RUN)
 - **Steps**:
-  1. Open a test reference image in Adobe Photoshop (or standard image editor with sRGB profile) alongside Art Practice Reference Studio.
+  1. Open a test reference image in Adobe Photoshop (or standard image editor with sRGB profile) alongside Miruform.
   2. Sample a specific known color region in Photoshop using the Info panel set to `RGB`, `HSB`, and `Lab (L* a* b*)`.
-  3. In Art Practice Studio, open the Dominant Palette & Lighting HUD (`E`) and toggle on the Live Eyedropper.
+  3. In Miruform, open the Dominant Palette & Lighting HUD (`E`) and toggle on the Live Eyedropper.
   4. Set sample size to `1px` (or matching Photoshop sample size e.g. `3x3` or `5x5 Average`).
   5. Hover over the exact corresponding coordinate in the reference image.
   6. Inspect the inspector readout:

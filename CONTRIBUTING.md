@@ -1,6 +1,6 @@
-# Contributing to Art Practice Reference Studio
+# Contributing to Miruform
 
-Thank you for your interest in improving Art Practice Reference Studio! We welcome community contributions aimed at fixing bugs, improving performance, and refining the core learning features for artists.
+Thank you for your interest in improving Miruform! We welcome community contributions aimed at fixing bugs, improving performance, and refining the core learning features for artists.
 
 ---
 

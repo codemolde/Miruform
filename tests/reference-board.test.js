@@ -1341,6 +1341,40 @@ test('Case 39: Sketch deletion removes attempt from CardManager, adjusts active 
   UI.closeBoardStage();
 });
 
+test('Case 40: Reference Board renders tag selection as a dropdown select menu', () => {
+  const ctx = setupTestEnvironment();
+  const UI = ctx.UI;
+  const CardManager = ctx.CardManager;
+
+  const images = [
+    { id: 'ref_x', name: 'x.jpg', path: '/art/x.jpg' },
+    { id: 'ref_y', name: 'y.jpg', path: '/art/y.jpg' }
+  ];
+  UI.currentDeckId = 'deck_tag_dropdown';
+  UI.cachedImages = images;
+  UI.cachedImagesDeckId = 'deck_tag_dropdown';
+
+  CardManager.cards['deck_tag_dropdown'] = {
+    'ref_x': { imageId: 'ref_x', tags: ['gesture', 'anatomy'] },
+    'ref_y': { imageId: 'ref_y', tags: ['gesture'] }
+  };
+
+  const tagsBar = ctx.document.getElementById('board-tags-bar');
+  UI.renderBoardTags();
+
+  assert.ok(tagsBar.innerHTML.includes('id="board-tag-select"'), 'board-tag-select dropdown must exist');
+  assert.ok(tagsBar.innerHTML.includes('board-tag-group'), 'board-tag-group container must exist');
+  assert.ok(tagsBar.innerHTML.includes('<option value="all"'), 'All Tags option must exist');
+  assert.ok(tagsBar.innerHTML.includes('<option value="anatomy"'), '#anatomy option must exist');
+  assert.ok(tagsBar.innerHTML.includes('<option value="gesture"'), '#gesture option must exist');
+
+  // Filter by tag updates select value and filteredReferences
+  UI.setBoardTagFilter('anatomy');
+  assert.strictEqual(UI.boardState.selectedTag, 'anatomy');
+  assert.strictEqual(UI.boardState.filteredReferences.length, 1);
+  assert.strictEqual(UI.boardState.filteredReferences[0].id, 'ref_x');
+});
+
 // -----------------------------------------------------------------------------
 // Security Checks: CSP, HTML Event Handlers & Escaping
 // -----------------------------------------------------------------------------

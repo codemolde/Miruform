@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   keepGhostMode: () => ipcRenderer.invoke('keep-ghost-mode'),
   setRestoreGhostOnBlur: (flag) => ipcRenderer.invoke('set-restore-ghost-on-blur', flag),
   getRestoreGhostOnBlur: () => ipcRenderer.invoke('get-restore-ghost-on-blur'),
+  setSessionState: (isViewing) => ipcRenderer.send('window:session-state', { isViewing: Boolean(isViewing) }),
   adjustOpacity: (delta) => ipcRenderer.invoke('adjust-opacity', delta),
   setOpacity: (target) => ipcRenderer.invoke('set-opacity', target),
   setFullScreen: (flag) => ipcRenderer.invoke('set-fullscreen', flag),

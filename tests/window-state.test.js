@@ -471,21 +471,24 @@ test('WeakMap Window State Management Tests', async (t) => {
     const win = new MockBrowserWindow({ width: 1000, height: 700 });
     setMainWindow(win);
 
-    // Initially, no opacity shortcuts registered
+    // Initially, no opacity or ghost shortcuts registered
+    assert.equal(registeredShortcuts.has('CmdOrCtrl+Shift+G'), false);
     assert.equal(registeredShortcuts.has('CmdOrCtrl+Shift+Up'), false);
     assert.equal(registeredShortcuts.has('CmdOrCtrl+Shift+Down'), false);
     assert.equal(registeredShortcuts.has('CmdOrCtrl+Shift+O'), false);
     assert.equal(registeredShortcuts.has('CmdOrCtrl+Shift+K'), false);
 
-    // Turn Ghost Mode ON: dynamic shortcuts register
+    // Turn Ghost Mode ON: dynamic shortcuts register (including CmdOrCtrl+Shift+G to allow exit)
     toggleGhostMode(win, true);
+    assert.equal(registeredShortcuts.has('CmdOrCtrl+Shift+G'), true, 'CmdOrCtrl+Shift+G registered dynamically while ghost mode is active');
     assert.equal(registeredShortcuts.has('CmdOrCtrl+Shift+Up'), true, 'CmdOrCtrl+Shift+Up registered when ghost mode is active');
     assert.equal(registeredShortcuts.has('CmdOrCtrl+Shift+Down'), true, 'CmdOrCtrl+Shift+Down registered when ghost mode is active');
     assert.equal(registeredShortcuts.has('CmdOrCtrl+Shift+O'), true, 'CmdOrCtrl+Shift+O registered when ghost mode is active');
     assert.equal(registeredShortcuts.has('CmdOrCtrl+Shift+K'), true, 'Keep-ghost hotkey CmdOrCtrl+Shift+K registered');
 
-    // Turn Ghost Mode OFF: dynamic shortcuts are immediately unregistered to not hijack other apps
+    // Turn Ghost Mode OFF: dynamic shortcuts are immediately unregistered so Finder and other apps are never hijacked
     toggleGhostMode(win, false);
+    assert.equal(registeredShortcuts.has('CmdOrCtrl+Shift+G'), false, 'CmdOrCtrl+Shift+G immediately unregistered on ghost exit');
     assert.equal(registeredShortcuts.has('CmdOrCtrl+Shift+Up'), false, 'CmdOrCtrl+Shift+Up unregistered on ghost exit');
     assert.equal(registeredShortcuts.has('CmdOrCtrl+Shift+Down'), false, 'CmdOrCtrl+Shift+Down unregistered on ghost exit');
     assert.equal(registeredShortcuts.has('CmdOrCtrl+Shift+O'), false, 'CmdOrCtrl+Shift+O unregistered on ghost exit');
@@ -739,6 +742,46 @@ test('WeakMap Window State Management Tests', async (t) => {
       assert.equal(deadState.ghost, false);
     }, 'getState does not throw on destroyed window');
 
+    setMainWindow(null);
+  });
+
+  await t.test('15. toggleGhostMode rejects activating ghost mode when window is minimized or hidden', () => {
+    const win = new MockBrowserWindow({ width: 1000, height: 700 });
+    setMainWindow(win);
+    win.isMinimized = () => true;
+
+    const res = toggleGhostMode(win, true);
+    assert.equal(res.isGhostMode, false);
+    assert.match(res.error, /minimized/i);
+
+    win.isMinimized = () => false;
+    win.isVisible = () => false;
+    const resHidden = toggleGhostMode(win, true);
+    assert.equal(resHidden.isGhostMode, false);
+    assert.match(resHidden.error, /hidden/i);
+
+    win.close();
+    setMainWindow(null);
+  });
+
+  await t.test('16. toggleGhostMode rejects activating ghost mode when isSessionActive is false and not floating', () => {
+    const win = new MockBrowserWindow({ width: 1000, height: 700 });
+    setMainWindow(win);
+    const state = getState(win);
+    state.isSessionActive = false;
+    state.floating = false;
+
+    const res = toggleGhostMode(win, true);
+    assert.equal(res.isGhostMode, false);
+    assert.match(res.error, /viewing a reference|during a session/i);
+
+    // When session becomes active, ghost mode can be activated
+    state.isSessionActive = true;
+    const resActive = toggleGhostMode(win, true);
+    assert.equal(resActive.isGhostMode, true);
+
+    toggleGhostMode(win, false);
+    win.close();
     setMainWindow(null);
   });
 });

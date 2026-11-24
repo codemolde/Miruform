@@ -1,5 +1,5 @@
 /* ============================================
-   Art Practice Reference — Premium Studio Styles
+   Miruform — Premium Studio Styles
    Dark Atelier Theme, Smooth Micro-Animations,
    Custom Wallpaper Engine, & Artist QoL Suite
    ============================================ */
@@ -103,9 +103,11 @@ body {
   background-position: center;
   background-repeat: no-repeat;
   filter: blur(var(--wallpaper-blur));
-  transform: scale(1.08);
-  /* Avoid blur vignetting at screen edges */
-  transition: filter 0.3s ease, opacity 0.4s ease;
+  transform: scale(1.08) translateZ(0);
+  /* Hardware accelerated layer promotion */
+  will-change: opacity;
+  backface-visibility: hidden;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
   opacity: 0;
 }
@@ -115,7 +117,8 @@ body {
   inset: 0;
   z-index: 1;
   background: var(--wallpaper-overlay-dim);
-  transition: background 0.3s ease, opacity 0.3s ease;
+  will-change: opacity;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
   opacity: 0;
 }
@@ -130,18 +133,14 @@ body.has-wallpaper .wallpaper-overlay {
 }
 
 /* Auto-dim custom wallpaper during active study so colors/values are never contaminated */
-body:has(#view-session.active) .wallpaper-overlay,
 body.in-session .wallpaper-overlay,
-body.zen-active.in-session .wallpaper-overlay,
-body.zen-active:has(#view-session.active) .wallpaper-overlay {
+body.zen-active.in-session .wallpaper-overlay {
   background: rgba(18, 18, 18, 0.96) !important;
   opacity: 1 !important;
 }
 
-body:has(#view-session.active) .wallpaper-bg,
 body.in-session .wallpaper-bg,
-body.zen-active.in-session .wallpaper-bg,
-body.zen-active:has(#view-session.active) .wallpaper-bg {
+body.zen-active.in-session .wallpaper-bg {
   opacity: 0.12 !important;
 }
 
@@ -8608,7 +8607,7 @@ textarea,
 }
 
 /* macOS Red/Yellow/Green Traffic Light Buttons Safe Inset (x: 16px to 68px, y: 14px)
-   Prevents traffic lights from overlapping the Art Practice logo and ← Back / ← End Session buttons */
+   Prevents traffic lights from overlapping the Miruform logo and ← Back / ← End Session buttons */
 .is-electron.is-mac .app-header,
 .is-mac.is-electron .app-header,
 .is-mac .is-electron .app-header,
@@ -8911,14 +8910,60 @@ body.is-electron.is-mac .session-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  overflow-x: auto;
-  max-width: 480px;
-  scrollbar-width: none;
-  padding: 2px 0;
+  padding: 0;
 }
 
-.board-tags-bar::-webkit-scrollbar {
-  display: none;
+/* Board Tag Filter Dropdown */
+.board-tag-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #141414;
+  border: 1px solid #2e2e2e;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.board-tag-group.active {
+  border-color: #D97706;
+  background: rgba(217, 119, 6, 0.1);
+}
+
+.board-tag-label {
+  color: #888;
+  font-size: 11px;
+  user-select: none;
+}
+
+.board-tag-group.active .board-tag-label {
+  color: #D97706;
+  font-weight: 600;
+}
+
+.board-tag-select {
+  background: transparent;
+  color: #ddd;
+  border: none;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+  padding: 1px 2px;
+  max-width: 200px;
+}
+
+.board-tag-select option {
+  background: #1a1a1a;
+  color: #eee;
+  padding: 4px;
+}
+
+.board-tag-select:focus-visible {
+  outline: 1px solid var(--accent, #d97706);
+  border-radius: 2px;
 }
 
 .board-tag-chip {

@@ -1,8 +1,8 @@
-# Art Practice Reference Studio
+# Miruform
 
 > **A focused, local-first reference studio and gesture trainer designed for fine artists, animators, and illustrators.**
 
-Art Practice Reference Studio combines a high-speed observational reference viewer with intelligent spaced repetition (SM-2 variant), timed gesture drills, tactile memory flash recalls, and observational critique filters—running 100% locally on your machine with a strict 0.0% idle GPU footprint.
+Miruform combines a high-speed observational reference viewer with intelligent spaced repetition (SM-2 variant), timed gesture drills, tactile memory flash recalls, and observational critique filters—running 100% locally on your machine with a strict 0.0% idle GPU footprint.
 
 ---
 
@@ -50,7 +50,7 @@ Art Practice Reference Studio combines a high-speed observational reference view
 
 ## Source-Available & Free Core
 
-Art Practice Reference Studio is **source-available and free for personal use**. All core learning tools, spaced repetition algorithms, gesture timers, critique filters, and reference boards are permanently free, fully unlocked, and without limits.
+Miruform is **source-available and free for personal use**. All core learning tools, spaced repetition algorithms, gesture timers, critique filters, and reference boards are permanently free, fully unlocked, and without limits.
 
 ### Building & Running from Source
 
@@ -75,12 +75,12 @@ npm test
 Pre-built macOS beta releases use **ad-hoc signing** (no paid Apple Developer certificate). Because ad-hoc builds are not notarized through Apple servers, macOS Gatekeeper blocks the application on first launch.
 
 #### Installing the App
-1. Open the downloaded `.dmg` and drag **Art Practice Studio** into your `/Applications` folder.
-2. Double-click the app to open it. macOS will display a warning: *"Art Practice Studio cannot be opened because the developer cannot be verified"*.
+1. Open the downloaded `.dmg` and drag **Miruform** into your `/Applications` folder.
+2. Double-click the app to open it. macOS will display a warning: *"Miruform cannot be opened because the developer cannot be verified"*.
 3. Open **System Settings** → **Privacy & Security**, scroll down to the Security section, and click **Open Anyway**. *(On older macOS versions, right-click the app in Applications and select **Open**).*
 4. Alternatively, remove the quarantine attribute directly in Terminal:
    ```bash
-   xattr -dr com.apple.quarantine "/Applications/Art Practice Studio.app"
+   xattr -dr com.apple.quarantine "/Applications/Miruform.app"
    ```
 
 #### Verifying Download Integrity (SHA-256)
@@ -96,7 +96,7 @@ shasum -a 256 dist/*.dmg
 
 ### Windows Installation & SmartScreen Setup
 
-Windows beta releases are provided as an NSIS installer (`Art Practice Studio Setup <version>.exe`) and a standalone portable executable (`Art Practice Studio <version>.exe`).
+Windows beta releases are provided as an NSIS installer (`Miruform Setup <version>.exe`) and a standalone portable executable (`Miruform <version>.exe`).
 
 Because pre-built beta releases are unsigned, **Microsoft Defender SmartScreen** will flag the application on first launch.
 
@@ -106,7 +106,7 @@ Because pre-built beta releases are unsigned, **Microsoft Defender SmartScreen**
 3. When Windows SmartScreen displays *"Windows protected your PC — Microsoft Defender SmartScreen prevented an unrecognized app from starting"*:
    - Click **More info**.
    - Click **Run anyway**.
-4. **Installer version**: Follow the setup prompts to install **Art Practice Studio** to your system with Start Menu and Desktop shortcuts.
+4. **Installer version**: Follow the setup prompts to install **Miruform** to your system with Start Menu and Desktop shortcuts.
 5. **Portable version**: Move the `.exe` to any folder of your choice and launch directly without installation.
 
 #### Verifying Download Integrity (SHA-256)
@@ -114,12 +114,12 @@ Verify the file checksum against published release hashes using PowerShell or Co
 
 ```powershell
 # PowerShell
-Get-FileHash -Algorithm SHA256 "Art Practice Studio Setup 1.0.0.exe"
+Get-FileHash -Algorithm SHA256 "Miruform Setup 1.0.0.exe"
 ```
 
 ```cmd
 :: Command Prompt
-certutil -hashfile "Art Practice Studio Setup 1.0.0.exe" SHA256
+certutil -hashfile "Miruform Setup 1.0.0.exe" SHA256
 ```
 
 ### Building Desktop Packages (macOS & Windows)
@@ -130,10 +130,10 @@ To package the desktop applications locally from source:
 npm run dist:mac
 
 # Verify ad-hoc signature on generated macOS bundle
-codesign -dv --verbose=4 "dist/mac-arm64/Art Practice Studio.app"
+codesign -dv --verbose=4 "dist/mac-arm64/Miruform.app"
 
 # Verify Gatekeeper rejection (expected for ad-hoc signing)
-spctl --assess --type execute -v "dist/mac-arm64/Art Practice Studio.app"
+spctl --assess --type execute -v "dist/mac-arm64/Miruform.app"
 
 # Build Windows installer and portable executables
 npm run dist:win
@@ -141,7 +141,7 @@ npm run dist:win
 
 ### Extension Ecosystem
 
-Art Practice Reference Studio includes a decoupled extension discovery hook. Optional add-ons can be placed inside:
+Miruform includes a decoupled extension discovery hook. Optional add-ons can be placed inside:
 ```
 userdata/extensions/<extension-name>/
 ```
@@ -154,7 +154,7 @@ Each extension provides a `manifest.json` declaring its entries. The host loads 
 
 ## License & Legal
 
-Art Practice Reference Studio is **source-available** software licensed under the [PolyForm Shield License 1.0.0](LICENSE).
+Miruform is **source-available** software licensed under the [PolyForm Shield License 1.0.0](LICENSE).
 
 ### Plain-English Summary (Not Part of the License)
 
