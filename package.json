@@ -1,6 +1,7 @@
 {
   "name": "miruform",
-  "version": "1.0.0",
+  "productName": "Miruform",
+  "version": "0.9.0",
   "description": "Miruform — Local-first reference studio, gesture trainer, and spaced repetition viewer for artists and animators",
   "keywords": [
     "miruform",

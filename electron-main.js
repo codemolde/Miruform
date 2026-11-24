@@ -2033,10 +2033,11 @@ if (isElectron && app) {
 
       if (app && typeof app.setAboutPanelOptions === 'function') {
         const aboutIconPath = path.join(__dirname, 'assets', 'icon.png');
+        const appVer = (app && typeof app.getVersion === 'function' ? app.getVersion() : null) || '0.9.0';
         app.setAboutPanelOptions({
           applicationName: 'Miruform',
-          applicationVersion: '1.0.0',
-          version: '1.0.0',
+          applicationVersion: appVer,
+          version: appVer,
           copyright: 'Copyright (c) 2026 codemolde',
           credits: 'Local-first reference studio & drawing practice tool.\nPolyForm Shield License 1.0.0.',
           iconPath: fs.existsSync(aboutIconPath) ? aboutIconPath : undefined

@@ -291,7 +291,7 @@ const UI = {
       btnCopyDiag.addEventListener('click', () => {
         const isElectron = Boolean(window.electronAPI && window.electronAPI.isElectron);
         const diagInfo = [
-          'Miruform 1.0.0 (Desktop Studio)',
+          'Miruform 0.9.0 (Desktop Studio)',
           `Platform: ${navigator.platform || 'Unknown'}`,
           `UserAgent: ${navigator.userAgent || 'Unknown'}`,
           `Mode: ${isElectron ? 'Electron Native' : 'Local Web'}`,

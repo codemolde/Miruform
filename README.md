@@ -114,12 +114,12 @@ Verify the file checksum against published release hashes using PowerShell or Co
 
 ```powershell
 # PowerShell
-Get-FileHash -Algorithm SHA256 "Miruform Setup 1.0.0.exe"
+Get-FileHash -Algorithm SHA256 "Miruform Setup 0.9.0.exe"
 ```
 
 ```cmd
 :: Command Prompt
-certutil -hashfile "Miruform Setup 1.0.0.exe" SHA256
+certutil -hashfile "Miruform Setup 0.9.0.exe" SHA256
 ```
 
 ### Building Desktop Packages (macOS & Windows)
