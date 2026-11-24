@@ -75,6 +75,9 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
+// Serve static assets from assets/
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+
 // Persistent Disk Storage for SRS Database & Visual Sketch History
 const USERDATA_DIR = process.env.USER_DATA_DIR || path.join(__dirname, 'userdata');
 const STATE_FILE = path.join(USERDATA_DIR, 'srs_state.json');

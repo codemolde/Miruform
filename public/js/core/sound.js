@@ -73,9 +73,15 @@ const SoundFX = {
     if (sessionIconEl && iconSvg) sessionIconEl.innerHTML = iconSvg;
 
     const btn1 = document.getElementById('btn-toggle-sound');
-    if (btn1) btn1.classList.toggle('btn-muted', !this.enabled);
+    if (btn1) {
+      btn1.classList.toggle('btn-muted', !this.enabled);
+      btn1.title = this.enabled ? 'Sound FX: On (Click to mute)' : 'Sound FX: Muted (Click to unmute)';
+    }
     const btn2 = document.getElementById('btn-detail-sound');
-    if (btn2) btn2.classList.toggle('btn-muted', !this.enabled);
+    if (btn2) {
+      btn2.classList.toggle('btn-muted', !this.enabled);
+      btn2.title = this.enabled ? 'Sound FX: On (Click to mute)' : 'Sound FX: Muted (Click to unmute)';
+    }
     const btn3 = document.getElementById('btn-session-sound');
     if (btn3) btn3.classList.toggle('btn-muted', !this.enabled);
   },

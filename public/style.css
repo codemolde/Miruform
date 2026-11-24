@@ -38,6 +38,7 @@
   --accent: #d97706;
   --accent-hover: #f59e0b;
   --accent-glow: rgba(217, 119, 6, 0.18);
+  --streak-glow: drop-shadow(0 0 4px rgba(255, 255, 255, 0.55));
 
   --success: #10b981;
   --success-glow: rgba(16, 185, 129, 0.18);
@@ -78,6 +79,948 @@
   --wallpaper-blur: 8px;
   --wallpaper-overlay-dim: rgba(18, 18, 18, 0.88);
   --transition-smooth: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==================== Munsell-Neutral Light Atelier Theme ==================== */
+:root[data-theme="light"],
+body[data-theme="light"] {
+  --bg-primary: #f5f5f7;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f0f0f3;
+  --bg-card-border: #e2e2e6;
+  --bg-input: #ffffff;
+
+  --text-primary: #18181b;
+  --text-secondary: #52525b;
+  --text-muted: #71717a;
+
+  --accent: #d97706;
+  --accent-hover: #b45309;
+  --accent-glow: rgba(217, 119, 6, 0.18);
+  --streak-glow: drop-shadow(0 0 4px rgba(245, 158, 11, 0.32));
+
+  --border: #e2e2e6;
+  --border-focus: #d97706;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Original Mascot Character Colors Preserved: clean drop-shadow for separation */
+[data-theme="light"] .brand-logo-img {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 1px rgba(0, 0, 0, 0.4));
+}
+
+[data-theme="light"] .brand-tagline,
+[data-theme="light"] .deck-card-path,
+[data-theme="light"] #deck-detail-path,
+[data-theme="light"] #deck-detail-folder,
+[data-theme="light"] .timer-hint,
+[data-theme="light"] .focus-hint,
+[data-theme="light"] .activity-subtitle {
+  color: var(--text-muted) !important;
+  text-shadow: none !important;
+}
+
+[data-theme="light"] .btn-secondary {
+  background: #ffffff;
+  color: #18181b;
+  border-color: #d1d1d6;
+}
+
+[data-theme="light"] .btn-secondary:hover {
+  background: #f0f0f3;
+  border-color: #a1a1aa;
+  color: #18181b;
+}
+
+[data-theme="light"] .btn-ghost {
+  color: #52525b;
+  border-color: #e2e2e6;
+}
+
+[data-theme="light"] .btn-ghost:hover {
+  background: #f0f0f3;
+  color: #18181b;
+  border-color: #d1d1d6;
+}
+
+/* Deck Cards & Stat Badges */
+[data-theme="light"] .deck-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .deck-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border-color: var(--accent);
+}
+
+[data-theme="light"] .deck-cover {
+  background: #e8e8ed;
+}
+
+[data-theme="light"] .stat-pill {
+  background: #f4f4f5;
+  color: #71717a;
+  border: 1px solid #e4e4e7;
+}
+
+[data-theme="light"] .stat-pill.due-badge {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+[data-theme="light"] .stat-pill.reviewed-badge {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+/* Stat Strips */
+[data-theme="light"] .today-strip,
+[data-theme="light"] .deck-stats-row {
+  background: #ffffff;
+  border-color: #e2e2e6;
+}
+
+[data-theme="light"] .stat-divider {
+  background: #e2e2e6;
+}
+
+[data-theme="light"] .stat-due .stat-value,
+[data-theme="light"] #today-due,
+[data-theme="light"] #stat-due {
+  color: #d97706;
+}
+
+[data-theme="light"] .atelier-flame-icon,
+[data-theme="light"] .stat-svg.stat-svg-streak,
+[data-theme="light"] .stat-svg-streak {
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.32));
+}
+
+/* Web Clipper Bar */
+[data-theme="light"] #web-clipper-bar {
+  background: #ffffff;
+  border-color: #e2e2e6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] #input-clip-url {
+  background: #f8f8fa;
+  border-color: #d1d1d6;
+  color: #18181b;
+}
+
+[data-theme="light"] #input-clip-url::placeholder {
+  color: #8e8e93;
+}
+
+[data-theme="light"] #input-clip-url:focus {
+  background: #ffffff;
+  border-color: #d97706;
+}
+
+/* Timer Options */
+[data-theme="light"] .timer-option {
+  background: #ffffff;
+  border-color: #e2e2e6;
+  color: #52525b;
+}
+
+[data-theme="light"] .timer-option:hover {
+  background: #f0f0f3;
+  border-color: #d1d1d6;
+  color: #18181b;
+}
+
+[data-theme="light"] .timer-option:has(input:checked) {
+  background: #fef3c7;
+  border-color: #d97706;
+  color: #b45309;
+}
+
+[data-theme="light"] .custom-timer-field {
+  background: #f8f8fa;
+  border-color: #d1d1d6;
+  color: #18181b;
+}
+
+[data-theme="light"] .tag-quick {
+  background: #f0f0f3;
+  border-color: #e2e2e6;
+  color: #71717a;
+}
+
+/* Flash & Recall Section */
+[data-theme="light"] .drill-settings {
+  background: #ffffff;
+  border-color: #e2e2e6;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .drill-title-group h3 {
+  color: #18181b;
+}
+
+[data-theme="light"] .drill-desc {
+  color: #52525b;
+}
+
+[data-theme="light"] .drill-toggle-slider {
+  background: #e2e2e6;
+  border-color: #d1d1d6;
+}
+
+[data-theme="light"] .drill-toggle-slider::before {
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] .drill-options-body {
+  border-top-color: #e2e2e6;
+}
+
+[data-theme="light"] .drill-options-body.drill-disabled {
+  opacity: 0.55;
+}
+
+[data-theme="light"] .drill-label {
+  color: #18181b;
+}
+
+[data-theme="light"] .btn-drill-pill {
+  background: #ffffff;
+  border-color: #d1d1d6;
+  color: #52525b;
+}
+
+[data-theme="light"] .btn-drill-pill:hover {
+  background: #f4f4f5;
+  border-color: #a1a1aa;
+  color: #18181b;
+}
+
+[data-theme="light"] .btn-drill-pill.active {
+  background: #fef3c7;
+  border-color: #d97706;
+  color: #b45309;
+  font-weight: 700;
+}
+
+/* Sub-Deck Focus Tags ("All Cards") */
+[data-theme="light"] .btn-focus-tag {
+  background: #ffffff;
+  border-color: #e2e2e6;
+  color: #52525b;
+}
+
+[data-theme="light"] .btn-focus-tag:hover {
+  background: #f0f0f3;
+  border-color: #d1d1d6;
+  color: #18181b;
+}
+
+[data-theme="light"] .btn-focus-tag.active {
+  background: #fef3c7 !important;
+  border-color: #d97706 !important;
+  color: #b45309 !important;
+}
+
+[data-theme="light"] .btn-focus-tag .focus-count {
+  background: #ebebee;
+  color: #52525b;
+}
+
+[data-theme="light"] .btn-focus-tag.active .focus-count {
+  background: #fde68a;
+  color: #92400e;
+}
+
+[data-theme="light"] .focus-empty-hint {
+  color: #71717a;
+}
+
+[data-theme="light"] .focus-empty-hint kbd {
+  background: #ebebee;
+  border: 1px solid #d1d1d6;
+  color: #18181b;
+}
+
+/* Action Cards in Deck Detail */
+[data-theme="light"] #btn-free-study {
+  background: #ffffff;
+  border: 1px solid #d1d1d6;
+  color: #18181b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] #btn-free-study:hover {
+  background: #f0f0f3;
+  border-color: #a1a1aa;
+}
+
+[data-theme="light"] #btn-review {
+  background: #ffffff;
+  border: 1px solid #d1d1d6;
+  color: #18181b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] #btn-review:hover {
+  background: #f0f0f3;
+  border-color: #a1a1aa;
+}
+
+/* Reflow Backlog Button */
+[data-theme="light"] .btn-reflow {
+  background: #ffffff;
+  border-color: #d1d1d6;
+  color: #52525b;
+}
+
+[data-theme="light"] .btn-reflow:hover {
+  background: #f0f0f3;
+  border-color: #a1a1aa;
+  color: #18181b;
+}
+
+/* Heatmap */
+[data-theme="light"] .heatmap-cell {
+  background: #ebebee;
+  border: 1px solid #e0e0e4;
+}
+
+[data-theme="light"] .heatmap-cell.s1 {
+  background: #d1d5db;
+}
+
+[data-theme="light"] .heatmap-cell.s2 {
+  background: #9ca3af;
+}
+
+[data-theme="light"] .heatmap-cell.s3 {
+  background: #6b7280;
+}
+
+[data-theme="light"] .heatmap-cell.s4 {
+  background: #4b5563;
+}
+
+[data-theme="light"] .heatmap-legend-cell {
+  border: 1px solid #d1d1d6;
+}
+
+[data-theme="light"] .floating-heatmap-tooltip {
+  background: #ffffff;
+  color: #18181b;
+  border-color: #d1d1d6;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Reference Board Mode */
+[data-theme="light"] .deck-mode-tabs-bar {
+  background: #e8e8ed;
+  border-color: #dcdce0;
+}
+
+[data-theme="light"] .deck-mode-tab {
+  color: #52525b;
+}
+
+[data-theme="light"] .deck-mode-tab:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #18181b;
+}
+
+[data-theme="light"] .deck-mode-tab.active {
+  background: #ffffff;
+  color: #18181b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .board-filter-bar {
+  background: #ffffff;
+  border: 1px solid #e2e2e6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .board-search-input {
+  background: #f8f8fa;
+  border: 1px solid #d1d1d6;
+  color: #18181b;
+}
+
+[data-theme="light"] .board-search-input:focus {
+  background: #ffffff;
+  border-color: #d97706;
+}
+
+[data-theme="light"] .board-search-icon {
+  color: #8e8e93;
+}
+
+[data-theme="light"] .btn-board-search-clear {
+  color: #71717a;
+}
+
+[data-theme="light"] .board-sort-group,
+[data-theme="light"] .board-tag-group,
+[data-theme="light"] .board-grid-size-group {
+  background: #f8f8fa;
+  border: 1px solid #d1d1d6;
+  color: #18181b;
+}
+
+[data-theme="light"] .board-sort-label,
+[data-theme="light"] .board-tag-label {
+  color: #52525b;
+}
+
+[data-theme="light"] .board-sort-select,
+[data-theme="light"] .board-tag-select {
+  background: transparent;
+  color: #18181b;
+}
+
+[data-theme="light"] .board-sort-select option,
+[data-theme="light"] .board-tag-select option {
+  background: #ffffff;
+  color: #18181b;
+}
+
+[data-theme="light"] .btn-board-size {
+  color: #71717a;
+}
+
+[data-theme="light"] .btn-board-size:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #18181b;
+}
+
+[data-theme="light"] .btn-board-size.active {
+  background: #ffffff;
+  color: #d97706;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .board-tag-chip {
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
+  color: #52525b;
+}
+
+[data-theme="light"] .board-tag-chip:hover {
+  background: #e8e8ed;
+  color: #18181b;
+}
+
+[data-theme="light"] .board-tag-chip.active {
+  background: #d97706;
+  color: #ffffff;
+}
+
+[data-theme="light"] .board-ref-count-badge {
+  color: #71717a;
+}
+
+[data-theme="light"] .board-ref-card {
+  background: #ffffff;
+  border: 1px solid #e2e2e6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .board-ref-card:hover {
+  border-color: #d97706;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .board-ref-thumb-wrap {
+  background: #f0f0f4;
+}
+
+[data-theme="light"] .board-ref-info {
+  background: #ffffff;
+}
+
+[data-theme="light"] .board-ref-title {
+  color: #18181b;
+}
+
+[data-theme="light"] .board-ref-tag-pill {
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
+  color: #71717a;
+}
+
+[data-theme="light"] .board-stage-nav-dock {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #d1d1d6;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .board-stage-nav-dock .btn-board-nav {
+  background: #f4f4f5;
+  border: 1px solid #d1d1d6;
+  color: #18181b;
+}
+
+[data-theme="light"] .board-stage-nav-dock .nav-kbd {
+  background: #ebebee;
+  border: 1px solid #d1d1d6;
+  color: #18181b;
+}
+
+/* Modals General */
+[data-theme="light"] .modal {
+  background: #ffffff;
+  border-color: #e2e2e6;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .modal-overlay {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+/* Wallpaper Modal Specifics */
+[data-theme="light"] .wallpaper-controls-box {
+  background: #f8f8fa;
+  border: 1px solid #e2e2e6;
+}
+
+[data-theme="light"] .control-label-group label {
+  color: #18181b;
+}
+
+[data-theme="light"] .control-label-group .control-val {
+  color: #d97706;
+}
+
+[data-theme="light"] .form-hint {
+  color: #71717a;
+}
+
+[data-theme="light"] .wallpaper-dropzone {
+  background: #f8f8fa;
+  border-color: #cbd5e1;
+}
+
+[data-theme="light"] .wallpaper-status-box {
+  background: #ffffff;
+  border: 1px solid #e2e2e6;
+}
+
+[data-theme="light"] #wallpaper-status-text {
+  color: #18181b;
+}
+
+/* Curated Starter Decks Modal */
+[data-theme="light"] .starter-deck-card {
+  background: #ffffff;
+  border: 1px solid #e2e2e6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .starter-deck-title {
+  color: #18181b !important;
+}
+
+[data-theme="light"] .starter-deck-desc {
+  color: #52525b;
+}
+
+[data-theme="light"] .starter-deck-badge {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+[data-theme="light"] .starter-deck-badge-pd {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+[data-theme="light"] .starter-deck-tag {
+  background: #f4f4f5;
+  color: #71717a;
+  border: 1px solid #e4e4e7;
+}
+
+[data-theme="light"] .starter-deck-location-row {
+  background: #f8f8fa;
+  border: 1px solid #e2e2e6;
+}
+
+[data-theme="light"] .starter-deck-location-label {
+  color: #52525b;
+}
+
+[data-theme="light"] .starter-deck-location-input {
+  background: #ffffff;
+  border: 1px solid #d1d1d6;
+  color: #18181b;
+}
+
+[data-theme="light"] .starter-deck-location-input:focus {
+  border-color: #d97706;
+}
+
+[data-theme="light"] .starter-deck-license-banner {
+  color: #71717a;
+}
+
+[data-theme="light"] .starter-deck-thumb {
+  background: #f0f0f4;
+  border: 1px solid #e2e2e6;
+}
+
+[data-theme="light"] .search-box input::placeholder,
+[data-theme="light"] .board-search-input::placeholder {
+  color: #8e8e93;
+}
+
+[data-theme="light"] .drill-stage-hud {
+  background: #ffffff;
+  border-color: #e2e2e6;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .btn-drill-action {
+  background: #f4f4f5;
+  border-color: #e2e2e6;
+  color: #18181b;
+}
+
+[data-theme="light"] .tag-pill {
+  background: #ebebee;
+  color: #52525b;
+  border-color: #e0e0e4;
+}
+
+[data-theme="light"] .tag-pill.active {
+  background: #d97706;
+  color: #ffffff;
+  border-color: #d97706;
+}
+
+/* Study Session Header & Mode Badges */
+[data-theme="light"] .session-mode-badge,
+[data-theme="light"] .session-mode-badge[data-mode="free"] {
+  background: #f4f4f5;
+  border: 1px solid #d1d1d6;
+  color: #18181b;
+}
+
+[data-theme="light"] .session-mode-badge[data-mode="new"],
+[data-theme="light"] .session-mode-badge[data-mode="review"] {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  color: #b45309;
+}
+
+[data-theme="light"] .session-mode-badge.board-mode {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  color: #b45309;
+}
+
+/* Study Session Stage & Artwork Canvas */
+[data-theme="light"] .session-header {
+  background: rgba(245, 245, 247, 0.94);
+  border-color: #e2e2e6;
+}
+
+[data-theme="light"] .image-container {
+  background: #f0f0f4;
+  border-color: #dcdce0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .image-container::before {
+  display: none;
+}
+
+/* Artist Toolbox HUD Dock */
+[data-theme="light"] .dock-toggle-tab {
+  background: #ffffff;
+  border-color: #d1d1d6;
+  color: #18181b;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .dock-toggle-tab:hover {
+  background: #f4f4f5;
+  color: #d97706;
+  border-color: #d97706;
+}
+
+[data-theme="light"] .image-toolbar {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: #d1d1d6;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .dock-category-bar {
+  background: #f0f0f3;
+  border: 1px solid #dcdce0;
+}
+
+[data-theme="light"] .dock-cat-tab {
+  color: #52525b;
+}
+
+[data-theme="light"] .dock-cat-tab:hover {
+  color: #18181b;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .dock-cat-tab.active {
+  color: #18181b;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .dock-group-heading {
+  color: #71717a;
+}
+
+[data-theme="light"] .image-toolbar .btn-hud {
+  background: #f8f8fa;
+  border: 1px solid #dcdce0;
+  color: #18181b;
+}
+
+[data-theme="light"] .image-toolbar .btn-hud:hover {
+  background: #f0f0f3;
+  border-color: #a1a1aa;
+}
+
+[data-theme="light"] .image-toolbar .btn-hud.active {
+  background: #fef3c7;
+  border-color: #d97706;
+  color: #b45309;
+}
+
+/* Rating Area & Studio Dock */
+[data-theme="light"] .rating-area {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: #d1d1d6;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .rating-toggle-tab {
+  background: #ffffff;
+  border-color: #d1d1d6;
+  color: #18181b;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .rating-toggle-tab:hover {
+  background: #f4f4f5;
+  color: #d97706;
+  border-color: #d97706;
+}
+
+[data-theme="light"] .rating-prompt {
+  color: #52525b;
+}
+
+[data-theme="light"] .btn-rate {
+  background: #ffffff;
+  border-color: #d1d1d6;
+  color: #18181b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .btn-rate:hover {
+  background: #f4f4f5;
+  border-color: #a1a1aa;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .btn-rate:active {
+  background: #e8e8ed !important;
+}
+
+[data-theme="light"] .btn-rate .rate-interval {
+  color: #71717a;
+}
+
+[data-theme="light"] .rating-sketch-bar {
+  background: #f8f8fa;
+  border-color: #d1d1d6;
+  color: #52525b;
+}
+
+[data-theme="light"] .rating-sketch-bar:hover,
+[data-theme="light"] .rating-sketch-bar.dragover {
+  background: #fef3c7;
+  border-color: #d97706;
+}
+
+[data-theme="light"] #btn-skip {
+  background: #ffffff;
+  border-color: #d1d1d6;
+  color: #52525b;
+}
+
+[data-theme="light"] #btn-skip:hover {
+  background: #f4f4f5;
+  color: #18181b;
+  border-color: #a1a1aa;
+}
+
+/* Picture-in-Picture & Electron Float Window */
+body[data-theme="light"].pip-mode,
+body[data-theme="light"].electron-float-active {
+  background: #f5f5f7 !important;
+}
+
+body[data-theme="light"].pip-mode .electron-float-bar,
+body[data-theme="light"].electron-float-active .electron-float-bar {
+  background: #ffffff !important;
+  border-bottom: 1px solid #d1d1d6 !important;
+  color: #18181b !important;
+}
+
+body[data-theme="light"].pip-mode .float-drag-zone,
+body[data-theme="light"].electron-float-active .float-drag-zone {
+  color: #18181b !important;
+}
+
+body[data-theme="light"].pip-mode .image-container,
+body[data-theme="light"].electron-float-active .image-container {
+  background: #f0f0f4 !important;
+}
+
+body[data-theme="light"].pip-mode .image-toolbar,
+body[data-theme="light"].electron-float-active .image-toolbar {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 1px solid #d1d1d6 !important;
+  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+body[data-theme="light"].pip-mode .image-toolbar .btn-hud,
+body[data-theme="light"].electron-float-active .image-toolbar .btn-hud {
+  background: #f8f8fa !important;
+  border: 1px solid #dcdce0 !important;
+  color: #18181b !important;
+}
+
+body[data-theme="light"].pip-mode .image-toolbar .btn-hud:hover,
+body[data-theme="light"].pip-mode .image-toolbar .btn-hud.active,
+body[data-theme="light"].electron-float-active .image-toolbar .btn-hud:hover,
+body[data-theme="light"].electron-float-active .image-toolbar .btn-hud.active {
+  background: #fef3c7 !important;
+  border-color: #d97706 !important;
+  color: #b45309 !important;
+}
+
+body[data-theme="light"].pip-mode .rating-area,
+body[data-theme="light"].electron-float-active .rating-area {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid #d1d1d6 !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+body[data-theme="light"].pip-mode .btn-rate,
+body[data-theme="light"].electron-float-active .btn-rate {
+  background: #ffffff !important;
+  border: 1px solid #d1d1d6 !important;
+  color: #18181b !important;
+}
+
+body[data-theme="light"].pip-mode .btn-rate:hover,
+body[data-theme="light"].electron-float-active .btn-rate:hover {
+  background: #f4f4f5 !important;
+  border-color: #a1a1aa !important;
+  color: #18181b !important;
+}
+
+body[data-theme="light"].pip-mode .timer-display,
+body[data-theme="light"].electron-float-active .timer-display {
+  background: #ffffff !important;
+  border-bottom: 1px solid #d1d1d6 !important;
+  color: #18181b !important;
+}
+
+body[data-theme="light"].pip-mode .timer-text,
+body[data-theme="light"].electron-float-active .timer-text {
+  color: #18181b !important;
+}
+
+body[data-theme="light"].pip-mode .timer-bar-container,
+body[data-theme="light"].electron-float-active .timer-bar-container {
+  background: #e2e2e6 !important;
+}
+
+body[data-theme="light"].pip-mode .timer-controls .btn,
+body[data-theme="light"].electron-float-active .timer-controls .btn {
+  background: #f4f4f5 !important;
+  border: 1px solid #d1d1d6 !important;
+  color: #18181b !important;
+}
+
+body[data-theme="light"].pip-mode .timer-controls .btn:hover,
+body[data-theme="light"].electron-float-active .timer-controls .btn:hover {
+  background: #e8e8ed !important;
+}
+
+body[data-theme="light"].pip-mode #btn-skip,
+body[data-theme="light"].electron-float-active #btn-skip {
+  background: #ffffff !important;
+  border-color: #d1d1d6 !important;
+  color: #52525b !important;
+}
+
+body[data-theme="light"].pip-mode #btn-skip:hover,
+body[data-theme="light"].electron-float-active #btn-skip:hover {
+  background: #f4f4f5 !important;
+  border-color: #a1a1aa !important;
+  color: #18181b !important;
+}
+
+body[data-theme="light"].pip-mode #btn-skip kbd,
+body[data-theme="light"].electron-float-active #btn-skip kbd {
+  background: #f0f0f3 !important;
+  border: 1px solid #d1d1d6 !important;
+  color: #18181b !important;
+}
+
+body[data-theme="light"].pip-mode .btn-rate.btn-again,
+body[data-theme="light"].electron-float-active .btn-rate.btn-again {
+  background: #ffffff !important;
+  border: 1px solid #d1d1d6 !important;
+  border-bottom: 2px solid #ef4444 !important;
+  color: #18181b !important;
+}
+
+body[data-theme="light"].pip-mode .btn-rate.btn-again:hover,
+body[data-theme="light"].electron-float-active .btn-rate.btn-again:hover {
+  background: #fef2f2 !important;
+  border-color: #ef4444 !important;
+}
+
+body[data-theme="light"].pip-mode .btn-rate.btn-again .rate-badge,
+body[data-theme="light"].electron-float-active .btn-rate.btn-again .rate-badge {
+  color: #ef4444 !important;
+}
+
+/* Scrollbars */
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #f0f0f3;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #c7c7cc;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #aeaeb2;
 }
 
 html,
@@ -359,12 +1302,24 @@ kbd {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  width: auto;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
   box-shadow: none;
+  flex: none;
+  overflow: visible;
+}
+
+.brand-logo-img {
+  width: auto;
+  height: 30px;
+  max-width: 36px;
+  object-fit: contain;
+  display: block;
   flex: none;
 }
 
@@ -400,6 +1355,9 @@ kbd {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
   line-height: 1;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .header-actions {
@@ -507,6 +1465,10 @@ kbd {
   gap: 8px;
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.sort-box label {
+  white-space: nowrap;
 }
 
 .select-input {
@@ -814,6 +1776,7 @@ kbd {
 
 .stat-svg.stat-svg-streak {
   color: #EF4444;
+  filter: var(--streak-glow, drop-shadow(0 0 4px rgba(255, 255, 255, 0.55)));
 }
 
 .stat-value,
@@ -823,7 +1786,7 @@ kbd {
   font-size: 13.5px;
   font-weight: 700;
   line-height: 1;
-  color: #FFFFFF;
+  color: var(--text-primary);
   letter-spacing: -0.2px;
   margin: 0;
   display: inline-block;
@@ -2100,10 +3063,25 @@ kbd {
 }
 
 /* Atelier Flame Streak Icon */
-.atelier-flame-icon {
+.atelier-flame-icon,
+.stat-svg.stat-svg-streak,
+.stat-svg-streak {
   vertical-align: middle;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.28));
+  filter: var(--streak-glow, drop-shadow(0 0 4px rgba(255, 255, 255, 0.55)));
+  transition: filter 0.25s ease;
+}
+
+[data-theme="light"] .atelier-flame-icon,
+[data-theme="light"] .stat-svg.stat-svg-streak,
+[data-theme="light"] .stat-svg-streak {
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.32));
+}
+
+[data-theme="dark"] .atelier-flame-icon,
+[data-theme="dark"] .stat-svg.stat-svg-streak,
+[data-theme="dark"] .stat-svg-streak {
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.55));
 }
 
 /* Streak Flame */
@@ -3165,7 +4143,8 @@ body:not(.pip-mode):not(.electron-float-active) .rating-area.rating-open>* {
 }
 
 .modal {
-  background: #161b22;
+  background: var(--bg-card);
+  color: var(--text-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   padding: 30px;
@@ -3190,6 +4169,135 @@ body:not(.pip-mode):not(.electron-float-active) .rating-area.rating-open>* {
 
 .modal-shortcuts-view {
   max-width: 640px;
+}
+
+/* ==================== About Screen Modal ==================== */
+.modal-about-view {
+  max-width: 580px;
+}
+
+.about-brand-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.about-logo {
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+[data-theme="light"] .about-logo {
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.15));
+}
+
+.about-version-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+.about-lead {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 12px 0 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.about-section {
+  margin-bottom: 16px;
+}
+
+.about-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.about-trust-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.about-trust-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.about-trust-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.about-trust-desc {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.about-spec-table {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+}
+
+.about-spec-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 11.5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="light"] .about-spec-row {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.about-spec-row:last-child {
+  border-bottom: none;
+}
+
+.about-spec-key {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.about-spec-val {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  text-align: right;
+}
+
+.about-modal-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 600px) {
+  .about-trust-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .modal-summary-view {
@@ -3959,6 +5067,117 @@ body.zen-active.hud-idle * {
   #session-zen-text {
     display: none !important;
   }
+
+  /* Tagline clips below width breakpoint -> hide to shorten to "Miruform" plus icon */
+  .brand-tagline {
+    display: none !important;
+  }
+
+  /* Top toolbar overflow -> collapse header buttons into icon-only buttons with tooltips */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 4px;
+    max-width: 100%;
+  }
+
+  .header-tools {
+    width: auto;
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 4px;
+    justify-content: flex-start;
+  }
+
+  .header-tools .btn,
+  .deck-header-actions .btn,
+  #btn-starter-decks {
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    padding: 0;
+    gap: 0;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+
+  .header-tools .btn .btn-label,
+  .header-tools .btn #sound-text,
+  .header-tools .btn #theme-text,
+  .deck-header-actions .btn .btn-label,
+  .deck-header-actions .btn #detail-sound-text,
+  .deck-header-actions .btn #detail-theme-text,
+  .deck-header-actions .btn #detail-wallpaper-text,
+  #btn-starter-decks .btn-label {
+    display: none !important;
+  }
+
+  /* Search & sort controls wrap awkwardly -> stack sort label above select & full width */
+  .deck-filter-bar {
+    padding: 10px 14px;
+    gap: 10px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .sort-box {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    box-sizing: border-box;
+  }
+
+  .sort-box label {
+    white-space: nowrap;
+    font-size: 12px;
+  }
+
+  .sort-box .select-input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .deck-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .brand-tagline {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  #btn-new-deck {
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    padding: 0;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+
+  #btn-new-deck .btn-label {
+    display: none !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .is-mac .app-header .header-actions,
+  body.is-electron.is-mac .app-header .header-actions {
+    margin-left: -64px;
+  }
 }
 
 /* ============================================================
@@ -4234,8 +5453,9 @@ body.zen-active.hud-idle * {
 /* ---------- Responsive refinements ---------- */
 @media (max-width: 960px) {
   .header-tools {
-    width: 100%;
-    justify-content: space-between;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 }
 
@@ -9103,6 +10323,15 @@ body.is-electron.is-mac .session-header {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.board-ref-thumb.lazy-thumb {
+  opacity: 0;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.board-ref-thumb.is-loaded {
+  opacity: 1;
 }
 
 .board-card-fallback {

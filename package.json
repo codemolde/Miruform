@@ -38,6 +38,9 @@
   "build": {
     "appId": "com.codemolde.miruform",
     "productName": "Miruform",
+    "icon": "assets/icon.png",
+    "afterPack": "./scripts/after-pack.js",
+    "afterAllArtifactBuild": "./scripts/after-all-artifact-build.js",
     "files": [
       "server.js",
       "electron-main.js",
@@ -48,6 +51,7 @@
       "package.json"
     ],
     "mac": {
+      "icon": "assets/icon.icns",
       "identity": null,
       "target": [
         {

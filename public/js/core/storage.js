@@ -526,9 +526,19 @@ const WallpaperManager = {
       overlayEl.style.opacity = '0';
     }
 
-    document.documentElement.style.setProperty('--wallpaper-blur', `${this.settings.blur}px`);
-    const dimAlpha = (this.settings.dim / 100).toFixed(2);
-    document.documentElement.style.setProperty('--wallpaper-overlay-dim', `rgba(13, 17, 23, ${dimAlpha})`);
+    const isLight = (document.documentElement && document.documentElement.getAttribute('data-theme') === 'light') ||
+      (document.body && document.body.getAttribute('data-theme') === 'light');
+    const dimAlpha = ((this.settings.dim ?? 50) / 100).toFixed(2);
+    const overlayColor = isLight ? `rgba(245, 245, 247, ${dimAlpha})` : `rgba(13, 17, 23, ${dimAlpha})`;
+
+    if (document.documentElement && document.documentElement.style) {
+      document.documentElement.style.setProperty('--wallpaper-blur', `${this.settings.blur}px`);
+      document.documentElement.style.setProperty('--wallpaper-overlay-dim', overlayColor);
+    }
+    if (document.body && document.body.style) {
+      document.body.style.setProperty('--wallpaper-overlay-dim', overlayColor);
+    }
+    overlayEl.style.backgroundColor = overlayColor;
   }
 };
 

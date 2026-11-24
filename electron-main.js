@@ -719,8 +719,14 @@ function setupTray() {
   if (!isElectron || !Tray) return;
   if (appTray) return;
   try {
+    const trayIconPath = path.join(__dirname, 'assets', 'tray_icon.png');
     let icon = null;
-    if (nativeImage && typeof nativeImage.createFromBuffer === 'function') {
+    if (fs.existsSync(trayIconPath) && nativeImage && typeof nativeImage.createFromPath === 'function') {
+      icon = nativeImage.createFromPath(trayIconPath);
+      if (process.platform === 'darwin' && typeof icon.setTemplateImage === 'function') {
+        icon.setTemplateImage(true);
+      }
+    } else if (nativeImage && typeof nativeImage.createFromBuffer === 'function') {
       const transparentPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
       icon = nativeImage.createFromBuffer(transparentPng);
     } else if (nativeImage && typeof nativeImage.createEmpty === 'function') {
@@ -1263,6 +1269,7 @@ function isTrustedIpcSender(event, trustedPort) {
  * Creates the primary studio BrowserWindow with dark atelier theme.
  */
 function createMainWindow(port) {
+  const iconPath = path.join(__dirname, 'assets', 'icon.png');
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 820,
@@ -1270,6 +1277,7 @@ function createMainWindow(port) {
     minHeight: 280,
     backgroundColor: '#121212',
     title: 'Miruform',
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     trafficLightPosition: { x: 16, y: 14 },
     show: false,
@@ -1307,6 +1315,7 @@ function createMainWindow(port) {
           backgroundColor: '#121212',
           alwaysOnTop: true,
           title: 'Reference PiP — Miruform',
+          icon: fs.existsSync(iconPath) ? iconPath : undefined,
           titleBarStyle: process.platform === 'darwin' ? 'hidden' : 'default',
           trafficLightPosition: { x: 10, y: 10 },
           webPreferences: {
@@ -1450,7 +1459,16 @@ function setupApplicationMenu() {
     ...(isMac ? [{
       label: app?.name || 'Miruform',
       submenu: [
-        { role: 'about' },
+        {
+          label: 'About Miruform',
+          click: () => {
+            if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+              mainWindow.webContents.send('shortcut:action', 'open-about');
+            } else if (app && typeof app.showAboutPanel === 'function') {
+              app.showAboutPanel();
+            }
+          }
+        },
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },
@@ -1587,6 +1605,30 @@ function setupApplicationMenu() {
         ] : [
           { role: 'close' }
         ])
+      ]
+    },
+    {
+      role: 'help',
+      submenu: [
+        {
+          label: 'About Miruform',
+          click: () => {
+            if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+              mainWindow.webContents.send('shortcut:action', 'open-about');
+            } else if (app && typeof app.showAboutPanel === 'function') {
+              app.showAboutPanel();
+            }
+          }
+        },
+        {
+          label: 'Keyboard Shortcuts',
+          accelerator: 'CmdOrCtrl+?',
+          click: () => {
+            if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+              mainWindow.webContents.send('shortcut:action', 'open-shortcuts');
+            }
+          }
+        }
       ]
     }
   ];
@@ -1988,6 +2030,29 @@ if (isElectron && app) {
     try {
       setupApplicationMenu();
       setupTray();
+
+      if (app && typeof app.setAboutPanelOptions === 'function') {
+        const aboutIconPath = path.join(__dirname, 'assets', 'icon.png');
+        app.setAboutPanelOptions({
+          applicationName: 'Miruform',
+          applicationVersion: '1.0.0',
+          version: '1.0.0',
+          copyright: 'Copyright (c) 2026 codemolde',
+          credits: 'Local-first reference studio & drawing practice tool.\nPolyForm Shield License 1.0.0.',
+          iconPath: fs.existsSync(aboutIconPath) ? aboutIconPath : undefined
+        });
+      }
+
+      if (process.platform === 'darwin' && app && app.dock && typeof app.dock.setIcon === 'function') {
+        const dockIconPath = path.join(__dirname, 'assets', 'icon.png');
+        if (fs.existsSync(dockIconPath)) {
+          try {
+            app.dock.setIcon(dockIconPath);
+          } catch (dockErr) {
+            console.warn('[Electron] Could not set dock icon:', dockErr.message);
+          }
+        }
+      }
 
       // Deny all unnecessary device/sensor/hardware permission requests by default,
       // while allowing standard 'fullscreen' display requests for the trusted local app origin

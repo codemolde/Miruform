@@ -37,6 +37,7 @@ const UI = {
     }
 
     await Storage.init();
+    if (typeof ThemeManager !== 'undefined') ThemeManager.init();
     SoundFX.init();
     DeckManager.init();
     CardManager.init();
@@ -140,7 +141,7 @@ const UI = {
   },
 
   getFlameSvgHTML(width = 16, height = 20) {
-    return `<svg class="atelier-flame-icon" viewBox="0 0 100 125" width="${width}" height="${height}" aria-hidden="true" style="vertical-align: middle; flex-shrink: 0;"><path d="M26 98 C10 80 12 52 32 28 C28 18 28 10 29 4 C36 14 42 25 44 36 C30 55 22 76 26 98 Z" fill="#27272A"/><path d="M24 96 C15 72 28 42 62 2 C58 28 64 46 74 60 C55 82 40 96 24 96 Z" fill="url(#flame-core-grad)"/><path d="M24 96 C18 76 24 54 38 34 C34 52 34 66 36 78 C46 58 60 46 76 38 C82 28 84 18 83 8 C92 26 94 50 86 72 C72 88 48 102 24 96 Z" fill="#3F3F46"/><circle cx="48" cy="70" r="26" fill="url(#flame-inner-glow)" style="mix-blend-mode: screen;"/><path d="M32 104 C20 94 22 76 30 68 C29 78 36 86 46 84 C58 82 60 66 54 52 C68 62 76 80 68 98 C60 112 44 112 32 104 Z" fill="#F4F4F0"/></svg>`;
+    return `<svg class="atelier-flame-icon stat-svg-streak" viewBox="0 0 100 125" width="${width}" height="${height}" aria-hidden="true" style="vertical-align: middle; flex-shrink: 0;"><path d="M26 98 C10 80 12 52 32 28 C28 18 28 10 29 4 C36 14 42 25 44 36 C30 55 22 76 26 98 Z" fill="#27272A"/><path d="M24 96 C15 72 28 42 62 2 C58 28 64 46 74 60 C55 82 40 96 24 96 Z" fill="url(#flame-core-grad)"/><path d="M24 96 C18 76 24 54 38 34 C34 52 34 66 36 78 C46 58 60 46 76 38 C82 28 84 18 83 8 C92 26 94 50 86 72 C72 88 48 102 24 96 Z" fill="#3F3F46"/><circle cx="48" cy="70" r="26" fill="url(#flame-inner-glow)" style="mix-blend-mode: screen;"/><path d="M32 104 C20 94 22 76 30 68 C29 78 36 86 46 84 C58 82 60 66 54 52 C68 62 76 80 68 98 C60 112 44 112 32 104 Z" fill="#F4F4F0"/></svg>`;
   },
 
   getDueSvgHTML(size = 12) {
@@ -208,6 +209,17 @@ const UI = {
     const btnSound3 = document.getElementById('btn-session-sound');
     if (btnSound3) btnSound3.addEventListener('click', toggleSoundHandler);
 
+    // Theme Toggles
+    const toggleThemeHandler = () => {
+      if (typeof ThemeManager !== 'undefined') {
+        ThemeManager.toggle();
+      }
+    };
+    const btnTheme1 = document.getElementById('btn-toggle-theme');
+    if (btnTheme1) btnTheme1.addEventListener('click', toggleThemeHandler);
+    const btnTheme2 = document.getElementById('btn-detail-theme');
+    if (btnTheme2) btnTheme2.addEventListener('click', toggleThemeHandler);
+
     // Global tactile click sound on interactive elements & background
     document.addEventListener('click', (e) => {
       const interactiveEl = e.target.closest('button, .btn, .folder-item, .btn-rate, .deck-card, .tool-btn, .badge, .tab-btn, a, .stat-pill, .control-btn, .shortcut-row');
@@ -257,6 +269,43 @@ const UI = {
     document.getElementById('btn-detail-wallpaper').addEventListener('click', () => this.openWallpaperModal());
     document.getElementById('btn-open-shortcuts').addEventListener('click', () => this.openShortcutsModal());
     document.getElementById('btn-open-backup').addEventListener('click', () => this.openBackupModal());
+
+    const btnOpenAbout = document.getElementById('btn-open-about');
+    if (btnOpenAbout) btnOpenAbout.addEventListener('click', () => this.openAboutModal());
+    const brandAboutTrigger = document.getElementById('brand-about-trigger');
+    if (brandAboutTrigger) {
+      brandAboutTrigger.addEventListener('click', () => this.openAboutModal());
+      brandAboutTrigger.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.openAboutModal();
+        }
+      });
+    }
+    const btnCloseAbout = document.getElementById('btn-close-about');
+    if (btnCloseAbout) btnCloseAbout.addEventListener('click', () => this.closeAboutModal());
+    const btnCloseAboutX = document.getElementById('btn-close-about-x');
+    if (btnCloseAboutX) btnCloseAboutX.addEventListener('click', () => this.closeAboutModal());
+    const btnCopyDiag = document.getElementById('btn-about-copy-diag');
+    if (btnCopyDiag) {
+      btnCopyDiag.addEventListener('click', () => {
+        const isElectron = Boolean(window.electronAPI && window.electronAPI.isElectron);
+        const diagInfo = [
+          'Miruform 1.0.0 (Desktop Studio)',
+          `Platform: ${navigator.platform || 'Unknown'}`,
+          `UserAgent: ${navigator.userAgent || 'Unknown'}`,
+          `Mode: ${isElectron ? 'Electron Native' : 'Local Web'}`,
+          `Timestamp: ${new Date().toISOString()}`
+        ].join('\n');
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+          navigator.clipboard.writeText(diagInfo).then(() => {
+            this.showToast('Diagnostics copied to clipboard', 'sparkles');
+          }).catch(() => {
+            this.showToast('Could not copy to clipboard', 'alert');
+          });
+        }
+      });
+    }
 
     // Search and Sort
     const searchInput = document.getElementById('deck-search-input');
@@ -870,7 +919,7 @@ const UI = {
     const modalIds = [
       'modal-deck', 'modal-delete', 'modal-folder-browser',
       'modal-todays-reviewed', 'modal-wallpaper', 'modal-shortcuts',
-      'modal-backup', 'modal-session-summary'
+      'modal-backup', 'modal-session-summary', 'modal-about'
     ];
     modalIds.forEach(id => {
       const el = document.getElementById(id);
@@ -922,6 +971,14 @@ const UI = {
 
   handleGlobalShortcutAction(action, data) {
     if (!action) return;
+    if (action === 'open-about') {
+      this.openAboutModal();
+      return;
+    }
+    if (action === 'open-shortcuts') {
+      this.openShortcutsModal();
+      return;
+    }
     if (action === 'toggle-ghost-mode') {
       this.toggleGhostMode();
       return;
@@ -1648,6 +1705,17 @@ const UI = {
 
   closeShortcutsModal() {
     document.getElementById('modal-shortcuts').classList.add('hidden');
+  },
+
+  // ---- About Modal ----
+  openAboutModal() {
+    const modal = document.getElementById('modal-about');
+    if (modal) modal.classList.remove('hidden');
+  },
+
+  closeAboutModal() {
+    const modal = document.getElementById('modal-about');
+    if (modal) modal.classList.add('hidden');
   },
 
   triggerHotkeyFeedback(elementId) {
@@ -3631,6 +3699,9 @@ const UI = {
       this.boardState.stopSlideshow();
       const select = document.getElementById('select-board-slide-interval');
       if (select) select.value = '0';
+      if (typeof ThumbnailCache !== 'undefined' && typeof ThumbnailCache.disconnectObserver === 'function') {
+        ThumbnailCache.disconnectObserver();
+      }
     }
 
     const btnStudy = document.getElementById('tab-btn-study');
@@ -3981,10 +4052,16 @@ const UI = {
 
     if (images.length <= 150) {
       grid.innerHTML = images.map(img => this._buildBoardCardHtml(img, deckCards, selectedRef)).join('');
+      if (typeof ThumbnailCache !== 'undefined' && typeof ThumbnailCache.observeElements === 'function') {
+        ThumbnailCache.observeElements(grid.querySelectorAll ? grid.querySelectorAll('.lazy-thumb:not(.is-loaded)') : []);
+      }
     } else {
       // Chunked progressive rendering for large libraries to prevent UI freeze
       const initialChunk = images.slice(0, 80);
       grid.innerHTML = initialChunk.map(img => this._buildBoardCardHtml(img, deckCards, selectedRef)).join('');
+      if (typeof ThumbnailCache !== 'undefined' && typeof ThumbnailCache.observeElements === 'function') {
+        ThumbnailCache.observeElements(grid.querySelectorAll ? grid.querySelectorAll('.lazy-thumb:not(.is-loaded)') : []);
+      }
       let offset = 80;
       const CHUNK = 80;
       const loadMore = () => {
@@ -3994,7 +4071,13 @@ const UI = {
         const temp = document.createElement('div');
         temp.innerHTML = slice.map(img => this._buildBoardCardHtml(img, deckCards, selectedRef)).join('');
         while (temp.firstChild) {
-          grid.appendChild(temp.firstChild);
+          const child = temp.firstChild;
+          grid.appendChild(child);
+          if (typeof ThumbnailCache !== 'undefined' && typeof ThumbnailCache.observeElements === 'function') {
+            if (child.querySelectorAll) {
+              ThumbnailCache.observeElements(child.querySelectorAll('.lazy-thumb:not(.is-loaded)'));
+            }
+          }
         }
         if (offset < images.length) {
           setTimeout(loadMore, 16);
@@ -4026,10 +4109,19 @@ const UI = {
       ? `<span class="board-ref-focal-badge">Crop</span>`
       : '';
 
+    const cachedThumb = (typeof ThumbnailCache !== 'undefined' && ThumbnailCache.has(img.id))
+      ? ThumbnailCache.get(img.id)
+      : null;
+
+    // 1x1 transparent GIF placeholder without double quotes or XML parsing breakouts
+    const BLANK_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    const initialSrc = cachedThumb ? cachedThumb.blobUrl : BLANK_PIXEL;
+    const isLoaded = Boolean(cachedThumb);
+
     return `
       <div class="board-ref-card${isSelected ? ' selected' : ''}" data-id="${this._esc(img.id)}" data-path="${this._esc(img.path || '')}" tabindex="0" role="button" aria-label="${this._esc(img.name || '')}">
         <div class="board-ref-thumb-wrap">
-          <img class="board-ref-thumb" src="${this._esc(imgUrl)}" alt="${this._esc(img.name || '')}" loading="lazy" decoding="async" draggable="false">
+          <img class="board-ref-thumb lazy-thumb${isLoaded ? ' is-loaded' : ''}" src="${initialSrc}" data-src="${this._esc(imgUrl)}" data-id="${this._esc(img.id)}" data-path="${this._esc(img.path || '')}" alt="${this._esc(img.name || '')}" loading="lazy" decoding="async" draggable="false">
           <div class="board-card-fallback hidden" aria-hidden="true">
             <span class="fallback-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
             <span class="fallback-text">Unavailable</span>

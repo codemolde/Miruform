@@ -4,11 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Miruform — Artist Study & SRS Drill</title>
+  <title>Miruform — Artist Study & Drawing Practice</title>
   <meta name="description"
     content="Miruform — Distraction-free art practice and spaced repetition reference tool for artists, gesture sketchers, and figure studies.">
   <meta name="keywords"
     content="miruform, art practice, reference viewer, gesture drawing, spaced repetition, SM-2, figure drawing, notan, local-first, artist tools, memory drill">
+  <link rel="icon" type="image/svg+xml" href="assets/miruform_icon.svg">
+  <link rel="alternate icon" type="image/png" href="assets/icon.png">
 
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'">
@@ -109,21 +111,12 @@
     <div id="view-deck-list" class="view active">
       <header class="app-header">
         <div class="brand-group">
-          <div class="brand-badge">
-            <span class="brand-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
-                <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
-                <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
-                <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
-                <path
-                  d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.563-2.512 5.563-5.563C22 6.5 17.5 2 12 2z" />
-              </svg></span>
-            <span class="brand-sub">STUDIO</span>
+          <div class="brand-badge" id="brand-about-trigger" role="button" tabindex="0" title="About Miruform" aria-label="About Miruform">
+            <img src="assets/miruform_icon.svg" class="brand-logo-img" alt="Miruform Logo" width="27" height="30">
           </div>
           <div class="brand-text">
             <h1>Miruform</h1>
-            <p class="brand-tagline">Visual Library & Reference Drills</p>
+            <p class="brand-tagline">Visual Library & Drawing Practice</p>
           </div>
         </div>
 
@@ -135,7 +128,22 @@
                   aria-hidden="true">
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
                   <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                </svg></span> <span id="sound-text">Sound</span>
+                </svg></span> <span id="sound-text" class="btn-label">Sound</span>
+            </button>
+            <button id="btn-toggle-theme" class="btn btn-secondary" title="Switch to Light Theme">
+              <span class="btn-icon" id="theme-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                  aria-hidden="true">
+                  <circle cx="12" cy="12" r="5"></circle>
+                  <line x1="12" y1="1" x2="12" y2="3"></line>
+                  <line x1="12" y1="21" x2="12" y2="23"></line>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                  <line x1="1" y1="12" x2="3" y2="12"></line>
+                  <line x1="21" y1="12" x2="23" y2="12"></line>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg></span> <span id="theme-text" class="btn-label">Light</span>
             </button>
             <button id="btn-open-wallpaper" class="btn btn-secondary" title="Customize Background Wallpaper">
               <span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
@@ -143,7 +151,7 @@
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                   <circle cx="8.5" cy="8.5" r="1.5"></circle>
                   <polyline points="21 15 16 10 5 21"></polyline>
-                </svg></span> Wallpaper
+                </svg></span> <span class="btn-label">Wallpaper</span>
             </button>
             <button id="btn-open-backup" class="btn btn-secondary" title="Backup or Restore Data">
               <span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
@@ -151,7 +159,7 @@
                   <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                   <polyline points="17 21 17 13 7 13 7 21"></polyline>
                   <polyline points="7 3 7 8 15 8"></polyline>
-                </svg></span> Data
+                </svg></span> <span class="btn-label">Data</span>
             </button>
             <button id="btn-open-shortcuts" class="btn btn-secondary" title="View Keyboard Shortcuts (?)">
               <span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
@@ -166,7 +174,15 @@
                   <line x1="14" y1="12" x2="14" y2="12"></line>
                   <line x1="18" y1="12" x2="18" y2="12"></line>
                   <line x1="7" y1="16" x2="17" y2="16"></line>
-                </svg></span> Hotkeys <kbd>?</kbd>
+                </svg></span> <span class="btn-label">Hotkeys <kbd>?</kbd></span>
+            </button>
+            <button id="btn-open-about" class="btn btn-secondary" title="About Miruform">
+              <span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg></span> <span class="btn-label">About</span>
             </button>
           </div>
           <button type="button" id="btn-starter-decks" class="btn btn-secondary" title="Explore Curated Starter Decks (Wikimedia Commons)">
@@ -177,10 +193,10 @@
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-            </span> Starter Decks
+            </span> <span class="btn-label">Starter Decks</span>
           </button>
-          <button id="btn-new-deck" class="btn btn-primary">
-            <span class="btn-icon">＋</span> New Deck
+          <button id="btn-new-deck" class="btn btn-primary" title="Create New Deck">
+            <span class="btn-icon">＋</span> <span class="btn-label">New Deck</span>
           </button>
         </div>
       </header>
@@ -218,7 +234,7 @@
         </div>
         <div class="stat-divider" aria-hidden="true"></div>
         <div class="today-cell stat-cell">
-          <svg class="atelier-flame-icon" viewBox="0 0 100 125" width="16" height="20" aria-hidden="true">
+          <svg class="atelier-flame-icon stat-svg-streak" viewBox="0 0 100 125" width="16" height="20" aria-hidden="true">
             <defs>
               <linearGradient id="flame-core-grad" x1="50%" y1="90%" x2="55%" y2="10%">
                 <stop offset="0%" stop-color="#FEF08A" />
@@ -264,7 +280,7 @@
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg></span>
-          <input type="text" id="deck-search-input" placeholder="Search decks by name or path..." autocomplete="off">
+          <input type="text" id="deck-search-input" placeholder="Search decks…" autocomplete="off">
           <button id="btn-clear-search" class="btn-clear-search hidden" title="Clear search"><svg width="12" height="12"
               viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
               stroke-linejoin="round">
@@ -328,7 +344,7 @@
             <span class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-              </svg></span> Refresh
+              </svg></span> <span class="btn-label">Refresh</span>
           </button>
           <button id="btn-detail-sound" class="btn btn-ghost" title="Tactile Sound FX (Click to mute/unmute)">
             <span class="btn-icon" id="detail-sound-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none"
@@ -336,7 +352,22 @@
                 aria-hidden="true">
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
                 <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-              </svg></span> Sound
+              </svg></span> <span id="detail-sound-text" class="btn-label">Sound</span>
+          </button>
+          <button id="btn-detail-theme" class="btn btn-ghost" title="Switch to Light Theme">
+            <span class="btn-icon" id="detail-theme-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                aria-hidden="true">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+              </svg></span> <span id="detail-theme-text" class="btn-label">Light</span>
           </button>
           <button id="btn-detail-wallpaper" class="btn btn-ghost" title="Customize Wallpaper"><span
               class="btn-icon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
@@ -344,9 +375,9 @@
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                 <circle cx="8.5" cy="8.5" r="1.5"></circle>
                 <polyline points="21 15 16 10 5 21"></polyline>
-              </svg></span> Wallpaper</button>
-          <button id="btn-edit-deck" class="btn btn-ghost">Edit</button>
-          <button id="btn-delete-deck" class="btn btn-danger-ghost">Delete</button>
+              </svg></span> <span id="detail-wallpaper-text" class="btn-label">Wallpaper</span></button>
+          <button id="btn-edit-deck" class="btn btn-ghost" title="Edit Deck Settings">Edit</button>
+          <button id="btn-delete-deck" class="btn btn-danger-ghost" title="Delete Deck">Delete</button>
         </div>
       </header>
  
@@ -640,7 +671,7 @@
             <span class="activity-stat-value" id="stat-longest-streak">0 days</span>
           </div>
           <div class="activity-stat">
-            <svg class="atelier-flame-icon" viewBox="0 0 100 125" width="16" height="20" aria-hidden="true">
+            <svg class="atelier-flame-icon stat-svg-streak" viewBox="0 0 100 125" width="16" height="20" aria-hidden="true">
               <defs>
                 <linearGradient id="flame-core-grad-heatmap" x1="50%" y1="90%" x2="55%" y2="10%">
                   <stop offset="0%" stop-color="#FEF08A" />
@@ -2264,6 +2295,92 @@
       </div>
     </div>
 
+    <!-- ==================== MODAL: About Miruform ==================== -->
+    <div id="modal-about" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="about-modal-title">
+      <div class="modal modal-about-view">
+        <div class="modal-header-row">
+          <div class="about-brand-header">
+            <img src="assets/miruform_icon.svg" class="about-logo" alt="Miruform Logo" width="40" height="44">
+            <div>
+              <h2 id="about-modal-title">Miruform</h2>
+              <div class="about-version-badge">Version 1.0.0 &bull; Studio Edition</div>
+            </div>
+          </div>
+          <button type="button" class="btn-modal-close" id="btn-close-about-x" aria-label="Close About Dialog">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <p class="about-lead">
+          A local-first visual library, gesture study companion, and spaced repetition viewer designed specifically for artists and animators.
+        </p>
+
+        <div class="about-section">
+          <h3 class="about-section-title">Privacy &amp; Data Ownership</h3>
+          <div class="about-trust-grid">
+            <div class="about-trust-card">
+              <div class="about-trust-label">100% Local-First</div>
+              <div class="about-trust-desc">All reference photos, drawings, and SRS review histories reside solely on your computer. No cloud accounts, external databases, or logins.</div>
+            </div>
+            <div class="about-trust-card">
+              <div class="about-trust-label">Zero Telemetry</div>
+              <div class="about-trust-desc">No tracking pixels, crash analytics, or background beacons. Your artwork and study habits remain entirely private.</div>
+            </div>
+            <div class="about-trust-card">
+              <div class="about-trust-label">Offline Native</div>
+              <div class="about-trust-desc">Engineered to function with zero network access required. Study anywhere, anytime, without an active internet connection.</div>
+            </div>
+            <div class="about-trust-card">
+              <div class="about-trust-label">Direct Storage</div>
+              <div class="about-trust-desc">Your original reference files are never altered or encrypted. Data is mirrored in human-readable JSON snapshots for complete portability.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="about-section">
+          <h3 class="about-section-title">System &amp; Build Specifications</h3>
+          <div class="about-spec-table">
+            <div class="about-spec-row">
+              <span class="about-spec-key">Application</span>
+              <span class="about-spec-val" id="about-spec-app">Miruform 1.0.0</span>
+            </div>
+            <div class="about-spec-row">
+              <span class="about-spec-key">Runtime</span>
+              <span class="about-spec-val" id="about-spec-runtime">Electron / Chromium Desktop Studio</span>
+            </div>
+            <div class="about-spec-row">
+              <span class="about-spec-key">Architecture</span>
+              <span class="about-spec-val">Local loopback (127.0.0.1) &bull; Isolated sandbox</span>
+            </div>
+            <div class="about-spec-row">
+              <span class="about-spec-key">License</span>
+              <span class="about-spec-val">PolyForm Shield License 1.0.0</span>
+            </div>
+            <div class="about-spec-row">
+              <span class="about-spec-key">Author</span>
+              <span class="about-spec-val">codemolde</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions about-modal-actions">
+          <button type="button" id="btn-about-copy-diag" class="btn btn-secondary">
+            <span class="btn-icon">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </span>
+            Copy Diagnostics
+          </button>
+          <button type="button" id="btn-close-about" class="btn btn-primary">Done</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== MODAL: Keyboard Shortcuts ==================== -->
     <div id="modal-shortcuts" class="modal-overlay hidden">
       <div class="modal modal-shortcuts-view">
@@ -2645,10 +2762,12 @@
   <script src="js/core/pip-state.js?v=2.7"></script>
   <script src="js/palette.js?v=2.7"></script>
   <script src="js/core/sound.js?v=2.7"></script>
+  <script src="js/core/theme.js?v=2.7"></script>
   <script src="js/core/utils.js?v=2.7"></script>
   <script src="js/core/storage.js?v=2.7"></script>
   <script src="js/srs/cards.js?v=2.7"></script>
   <script src="js/srs/session.js?v=2.7"></script>
+  <script src="js/board/thumbnail-cache.js?v=2.7"></script>
   <script src="js/board/board.js?v=2.7"></script>
   <script src="js/srs/drill.js?v=2.7"></script>
   <script src="js/optics/render-canvas.js?v=2.7"></script>

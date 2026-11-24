@@ -14,7 +14,9 @@ function setupTestEnvironment() {
     const classList = new Set();
     const listeners = {};
     const dataset = {};
-    const style = {};
+    const style = {
+      setProperty(k, v) { this[k] = v; }
+    };
     const attributes = {};
     const children = [];
     let textContent = '';
@@ -139,6 +141,9 @@ function setupTestEnvironment() {
     },
     body: makeElement('body'),
     documentElement: {
+      getAttribute(k) { return null; },
+      setAttribute(k, v) { },
+      removeAttribute(k) { },
       style: {
         setProperty(k, v) { this[k] = v; }
       },
