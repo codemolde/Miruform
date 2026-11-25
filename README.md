@@ -1,8 +1,12 @@
 # [Miruform](https://github.com/codemolde/Miruform)
 
+<img src="assets/icon.png" alt="Miruform Logo" width="160" />
+
 > **A focused, local-first reference studio and gesture trainer designed for fine artists, animators, and illustrators.**
 
 Miruform combines a high-speed observational reference viewer with intelligent spaced repetition (SM-2 variant), timed gesture drills, tactile memory flash recalls, and observational critique filters—running 100% locally on your machine with a strict 0.0% idle GPU footprint.
+
+![Miruform Main Menu — Visual Library & Deck Dashboard](screenshot/main_menu.png)
 
 ---
 
@@ -13,10 +17,16 @@ Miruform combines a high-speed observational reference viewer with intelligent s
 - **Difficulty Grading**: Rate studies as *Again (1)*, *Hard (2)*, *Good (3)*, or *Easy (4)* with mathematical mean-reversion easing to prevent ease drift.
 - **Backlog Reflow & Leech Tags**: Never get overwhelmed after taking time off; overdue cards re-stagger automatically, and challenging references receive `#leech` tags for focused drilling.
 
+![Deck Study Hub — SRS Queue, Practice Timer & Focus Filters](screenshot/deck_main_menu.png)
+
+![Review Activity Heatmap — Daily Sketching Consistency & Streaks](screenshot/heatmap.png)
+
 ### 2. Timed Gesture & Observational Drills
 - **Precision Gesture Sessions**: Configurable 30s, 60s, 2m, 5m, or custom interval timers.
 - **Audible Metronome & Tones**: Low-latency synthesized Web Audio tactile feedback for start, halfway, and time-up intervals.
 - **Flash & Recall (Memory Drill)**: Observe a reference for 10–30s, veil the screen into Munsell neutral blackout or heavy blur, execute a blind memory sketch, then reveal for self-critique.
+
+![Observational Practice Stage — Distraction-Free Reference Canvas](screenshot/canvas_main.png)
 
 ### 3. Atelier Optical Filters & Critique Tools
 - **Value Check (Grayscale)**: Strip hue distractions to verify big value masses and hierarchy.
@@ -27,15 +37,23 @@ Miruform combines a high-speed observational reference viewer with intelligent s
 - **Plumb Lines & Angles**: Shift-drag directly on the image to measure vertical falloffs and tilt angles.
 - **Onion-Skin Sketch Critique**: Drag & drop or paste (`Cmd+V`) your drawing attempt over the photo with Difference blending.
 
+![Atelier Tools & Critique Panel — Tonal Filters, Overlay & SRS Grading](screenshot/canvas_tools_rating.png)
+
 ### 4. Interactive Reference Board & Slideshow
 - **Infinite Reference Canvas**: Group, filter by tag, and search reference photos across folders.
 - **Zero SRS Contamination**: Freely explore and study images on the board without altering card review schedules.
 - **Fullscreen Slideshow**: Continuous background reference flow with customizable dwell times and instant pause/resume.
 
+![Reference Board — Searchable Multi-Tag Reference Grid](screenshot/refernce_board.png)
+
 ### 5. Native Desktop Studio Integration (Electron)
-- **Always-on-Top Floating Mode**: Compact reference window floats unobtrusively beside Photoshop, Clip Studio Paint, Blender, or ZBrush.
+- **Always-on-Top Floating Mode**: Compact reference window floats unobtrusively beside Photoshop, Clip Studio Paint, Krita, Blender, or ZBrush.
 - **Click-Through Ghost Mode (`CmdOrCtrl+Shift+G`)**: Translucent reference floating directly above your digital drawing canvas without blocking cursor pen strokes.
 - **Picture-in-Picture Support**: W3C Document PiP (Chromium) and Video Canvas Streamer (Safari) fallback for browser sessions.
+
+![Always-on-Top Floating PiP Window over Krita](screenshot/floating_pip.png)
+
+![Click-Through Ghost Mode Active Over Drawing Canvas](screenshot/float_pip_clickthrough.png)
 
 ---
 
